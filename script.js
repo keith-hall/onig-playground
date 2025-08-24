@@ -116,6 +116,9 @@ Phone numbers:
     findAllMatches(regex, text) {
         const matches = [];
         
+        // Reset lastIndex for global regex
+        regex.lastIndex = 0;
+        
         // For global flag, find all matches
         if (this.flagCheckboxes.global.checked) {
             let match;
