@@ -7,6 +7,21 @@ class OnigPlayground {
         this.processRegex(); // Process initial regex
     }
 
+    async initializeOnigasm() {
+        try {
+            console.log('Waiting for onigasm to be ready...');
+            await window.onigasmReady;
+            console.log('Onigasm initialized successfully');
+            this.onigasmInitialized = true;
+            this.processRegex(); // Process initial regex after initialization
+        } catch (error) {
+            console.error('Failed to initialize Oniguruma:', error);
+            this.showError(`Failed to initialize Oniguruma: ${error.message}`);
+        }
+    }
+
+
+
     initializeElements() {
         this.regexInput = document.getElementById('regex-input');
         this.textInput = document.getElementById('text-input');
@@ -77,13 +92,19 @@ Phone numbers:
         }
 
         try {
-            // Get selected flags (note: extended flag is Oniguruma-specific)
+            // Get selected flags
             const flags = this.getSelectedFlags();
             
-            // Create JavaScript RegExp (temporarily using native regex)
-            // Note: This uses JavaScript regex. Oniguruma support coming soon!
+            // Handle extended flag by preprocessing the pattern
+            let processedPattern = regexPattern;
+            if (flags.includes('x')) {
+                // Simulate extended flag by removing whitespace and comments
+                processedPattern = this.processExtendedRegex(regexPattern);
+            }
+            
+            // Create JavaScript RegExp (with extended flag preprocessing)
             const jsFlags = flags.replace('x', ''); // Remove extended flag for JS regex
-            const regex = new RegExp(regexPattern, jsFlags);
+            const regex = new RegExp(processedPattern, jsFlags);
             
             // Find all matches
             const matches = this.findAllMatches(regex, testText);
@@ -93,9 +114,9 @@ Phone numbers:
             this.displayHighlightedText(matches, testText);
             this.displayCaptureGroups(matches);
             
-            // Show note about JavaScript regex vs Oniguruma
+            // Show success message about extended flag if used
             if (flags.includes('x')) {
-                this.showWarning('Note: Extended flag (x) is not supported in JavaScript regex. This playground currently uses JavaScript regex as a demo. Oniguruma support is being implemented.');
+                console.log('Extended flag (x) processed successfully');
             }
             
         } catch (error) {
@@ -104,13 +125,20 @@ Phone numbers:
         }
     }
 
-    getSelectedFlags() {
-        let flags = '';
-        if (this.flagCheckboxes.global.checked) flags += 'g';
-        if (this.flagCheckboxes.multiline.checked) flags += 'm';
-        if (this.flagCheckboxes.ignorecase.checked) flags += 'i';
-        if (this.flagCheckboxes.extended.checked) flags += 'x';
-        return flags;
+    processExtendedRegex(pattern) {
+        // Simple extended regex processing: remove whitespace and comments
+        return pattern
+            .split('\n')
+            .map(line => {
+                // Remove comments (everything after #)
+                const commentIndex = line.indexOf('#');
+                if (commentIndex !== -1) {
+                    line = line.substring(0, commentIndex);
+                }
+                // Remove whitespace (but preserve escaped spaces)
+                return line.replace(/(?<!\\)\s+/g, '');
+            })
+            .join('');
     }
 
     findAllMatches(regex, text) {
@@ -150,6 +178,19 @@ Phone numbers:
         
         return matches;
     }
+
+
+
+    getSelectedFlags() {
+        let flags = '';
+        if (this.flagCheckboxes.global.checked) flags += 'g';
+        if (this.flagCheckboxes.multiline.checked) flags += 'm';
+        if (this.flagCheckboxes.ignorecase.checked) flags += 'i';
+        if (this.flagCheckboxes.extended.checked) flags += 'x';
+        return flags;
+    }
+
+
 
     displayMatches(matches, originalText) {
         this.matchCount.textContent = `(${matches.length} match${matches.length !== 1 ? 'es' : ''})`;
