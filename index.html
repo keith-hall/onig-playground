@@ -11,9 +11,8 @@
         <header>
             <h1>Oniguruma Regex Playground</h1>
             <p>Test and experiment with Oniguruma regex patterns in real-time</p>
-            <div style="background: rgba(255,255,255,0.1); padding: 0.75rem; margin-top: 1rem; border-radius: 4px; font-size: 0.9rem;">
-                <strong>Note:</strong> Currently running with JavaScript regex engine for demonstration. 
-                Oniguruma-specific features will be added in future updates.
+            <div style="background: rgba(34,139,34,0.2); padding: 0.75rem; margin-top: 1rem; border-radius: 4px; font-size: 0.9rem;">
+                <strong>✓ Powered by Oniguruma:</strong> Full support for Oniguruma regex features including extended syntax (x flag).
             </div>
         </header>
 
@@ -82,6 +81,9 @@
         </footer>
     </div>
 
+    <!-- Load Onigasm WebAssembly module -->
+    <script src="lib/onigasm.js"></script>
+    <script src="lib/onigasm-wrapper.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

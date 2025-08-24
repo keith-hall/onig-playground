@@ -1,10 +1,46 @@
 class OnigPlayground {
     constructor() {
         this.debounceTimer = null;
+        this.onigasmInitialized = false;
         this.initializeElements();
         this.bindEvents();
         this.showExampleRegex();
-        this.processRegex(); // Process initial regex
+        this.initializeOnigasm(); // Initialize Oniguruma first
+    }
+
+    async initializeOnigasm() {
+        try {
+            // Wait for onigasm to be available
+            await this.waitForOnigasm();
+            await OnigasmWrapper.init();
+            console.log('Onigasm initialized successfully');
+            this.onigasmInitialized = true;
+            this.processRegex(); // Process initial regex after initialization
+        } catch (error) {
+            console.error('Failed to initialize Oniguruma:', error);
+            this.showError(`Failed to initialize Oniguruma: ${error.message}`);
+        }
+    }
+
+    waitForOnigasm() {
+        return new Promise((resolve, reject) => {
+            if (typeof OnigasmWrapper !== 'undefined') {
+                resolve();
+                return;
+            }
+            
+            let attempts = 0;
+            const checkInterval = setInterval(() => {
+                attempts++;
+                if (typeof OnigasmWrapper !== 'undefined') {
+                    clearInterval(checkInterval);
+                    resolve();
+                } else if (attempts > 50) { // 5 seconds timeout
+                    clearInterval(checkInterval);
+                    reject(new Error('Onigasm wrapper not loaded'));
+                }
+            }, 100);
+        });
     }
 
     initializeElements() {
@@ -62,11 +98,20 @@ Phone numbers:
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
-        this.debounceTimer = setTimeout(() => this.processRegex(), 300);
+        this.debounceTimer = setTimeout(() => {
+            if (this.onigasmInitialized) {
+                this.processRegex();
+            }
+        }, 300);
     }
 
     processRegex() {
         this.clearError();
+        
+        if (!this.onigasmInitialized) {
+            // Don't process if onigasm isn't ready yet
+            return;
+        }
         
         const regexPattern = this.regexInput.value.trim();
         const testText = this.textInput.value;
@@ -77,32 +122,85 @@ Phone numbers:
         }
 
         try {
-            // Get selected flags (note: extended flag is Oniguruma-specific)
+            // Get selected flags
             const flags = this.getSelectedFlags();
             
-            // Create JavaScript RegExp (temporarily using native regex)
-            // Note: This uses JavaScript regex. Oniguruma support coming soon!
-            const jsFlags = flags.replace('x', ''); // Remove extended flag for JS regex
-            const regex = new RegExp(regexPattern, jsFlags);
+            // Create Oniguruma regex using the wrapper
+            const onigFlags = flags.replace('g', ''); // Remove global flag - we'll handle it manually
+            const regex = new OnigasmWrapper.OnigRegExp(regexPattern, onigFlags);
             
             // Find all matches
-            const matches = this.findAllMatches(regex, testText);
+            const matches = this.findAllMatchesWithWrapper(regex, testText, flags);
             
             // Update UI with results
             this.displayMatches(matches, testText);
             this.displayHighlightedText(matches, testText);
             this.displayCaptureGroups(matches);
             
-            // Show note about JavaScript regex vs Oniguruma
-            if (flags.includes('x')) {
-                this.showWarning('Note: Extended flag (x) is not supported in JavaScript regex. This playground currently uses JavaScript regex as a demo. Oniguruma support is being implemented.');
-            }
-            
         } catch (error) {
+            console.error('Regex processing error:', error);
             this.showError(`Regex Error: ${error.message}`);
             this.clearResults();
         }
     }
+
+    findAllMatchesWithWrapper(regex, text, flags) {
+        const matches = [];
+        
+        try {
+            console.log('Searching with wrapper, flags:', flags);
+            
+            // For global flag, find all matches by manually iterating
+            if (flags.includes('g')) {
+                let startPos = 0;
+                while (startPos < text.length) {
+                    const match = regex.search(text, startPos);
+                    if (!match) {
+                        break;
+                    }
+                    
+                    console.log('Found match:', match);
+                    matches.push({
+                        match: match,
+                        index: match.index,
+                        text: match[0],
+                        groups: match.slice(1) // Capture groups (excluding full match)
+                    });
+                    
+                    // Move to next position
+                    // Prevent infinite loop for zero-length matches
+                    const nextPos = match.index + Math.max(1, match[0].length);
+                    if (nextPos <= startPos) {
+                        startPos += 1;
+                    } else {
+                        startPos = nextPos;
+                    }
+                }
+            } else {
+                // Single match
+                const match = regex.search(text, 0);
+                if (match) {
+                    console.log('Found single match:', match);
+                    matches.push({
+                        match: match,
+                        index: match.index,
+                        text: match[0],
+                        groups: match.slice(1)
+                    });
+                }
+            }
+            
+            console.log('Total matches found:', matches.length);
+            
+        } catch (error) {
+            console.error('Wrapper search error:', error);
+            throw error;
+        }
+        
+        return matches;
+    }
+
+
 
     getSelectedFlags() {
         let flags = '';
@@ -113,43 +211,7 @@ Phone numbers:
         return flags;
     }
 
-    findAllMatches(regex, text) {
-        const matches = [];
-        
-        // Reset lastIndex for global regex
-        regex.lastIndex = 0;
-        
-        // For global flag, find all matches
-        if (this.flagCheckboxes.global.checked) {
-            let match;
-            while ((match = regex.exec(text)) !== null) {
-                matches.push({
-                    match: match,
-                    index: match.index,
-                    text: match[0],
-                    groups: match.slice(1) // Capture groups (excluding full match)
-                });
-                
-                // Prevent infinite loop for zero-length matches
-                if (match.index === regex.lastIndex) {
-                    regex.lastIndex++;
-                }
-            }
-        } else {
-            // Single match
-            const match = regex.exec(text);
-            if (match) {
-                matches.push({
-                    match: match,
-                    index: match.index,
-                    text: match[0],
-                    groups: match.slice(1)
-                });
-            }
-        }
-        
-        return matches;
-    }
+
 
     displayMatches(matches, originalText) {
         this.matchCount.textContent = `(${matches.length} match${matches.length !== 1 ? 'es' : ''})`;
