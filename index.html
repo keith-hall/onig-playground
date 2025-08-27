@@ -12,8 +12,8 @@
             <h1>Oniguruma Regex Playground</h1>
             <p>Test and experiment with Oniguruma regex patterns in real-time</p>
             <div style="background: rgba(255,255,255,0.1); padding: 0.75rem; margin-top: 1rem; border-radius: 4px; font-size: 0.9rem;">
-                <strong>Note:</strong> Currently running with JavaScript regex engine for demonstration. 
-                Oniguruma-specific features will be added in future updates.
+                <strong>✨ Now Powered by Oniguruma!</strong> This playground now uses a WebAssembly build of fancy-regex (providing Oniguruma-like features) 
+                for real regex processing. Extended flag (x) and other advanced features are now supported!
             </div>
         </header>
 
@@ -76,12 +76,14 @@
 
         <footer>
             <p>
-                Powered by <a href="https://github.com/NeekSandhu/onigasm" target="_blank">onigasm</a> - 
-                WebAssembly port of Oniguruma regex library
+                Powered by <a href="https://github.com/fancy-regex/fancy-regex" target="_blank">fancy-regex</a> - 
+                Advanced regex features compiled to WebAssembly
             </p>
         </footer>
     </div>
 
+    <script src="./lib/onigasm.js"></script>
+    <script src="./lib/onigasm-wrapper.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
