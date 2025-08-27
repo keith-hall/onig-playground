@@ -65,7 +65,7 @@ Phone numbers:
         this.debounceTimer = setTimeout(() => this.processRegex(), 300);
     }
 
-    processRegex() {
+    async processRegex() {
         this.clearError();
         
         const regexPattern = this.regexInput.value.trim();
@@ -77,26 +77,24 @@ Phone numbers:
         }
 
         try {
-            // Get selected flags (note: extended flag is Oniguruma-specific)
+            // Initialize Oniguruma if not already initialized
+            if (!window.OnigurumaWrapper.isInitialized()) {
+                await window.OnigurumaWrapper.init();
+            }
+
+            // Get selected flags
             const flags = this.getSelectedFlags();
             
-            // Create JavaScript RegExp (temporarily using native regex)
-            // Note: This uses JavaScript regex. Oniguruma support coming soon!
-            const jsFlags = flags.replace('x', ''); // Remove extended flag for JS regex
-            const regex = new RegExp(regexPattern, jsFlags);
+            // Create Oniguruma RegExp
+            const regex = new window.OnigurumaWrapper.OnigRegExp(regexPattern, flags);
             
-            // Find all matches
-            const matches = this.findAllMatches(regex, testText);
+            // Find all matches using our custom method
+            const matches = this.findAllMatchesOniguruma(regex, testText);
             
             // Update UI with results
             this.displayMatches(matches, testText);
             this.displayHighlightedText(matches, testText);
             this.displayCaptureGroups(matches);
-            
-            // Show note about JavaScript regex vs Oniguruma
-            if (flags.includes('x')) {
-                this.showWarning('Note: Extended flag (x) is not supported in JavaScript regex. This playground currently uses JavaScript regex as a demo. Oniguruma support is being implemented.');
-            }
             
         } catch (error) {
             this.showError(`Regex Error: ${error.message}`);
@@ -106,46 +104,39 @@ Phone numbers:
 
     getSelectedFlags() {
         let flags = '';
-        if (this.flagCheckboxes.global.checked) flags += 'g';
         if (this.flagCheckboxes.multiline.checked) flags += 'm';
         if (this.flagCheckboxes.ignorecase.checked) flags += 'i';
         if (this.flagCheckboxes.extended.checked) flags += 'x';
+        // Note: Global flag is handled differently in Oniguruma (it finds all matches by default)
         return flags;
     }
 
-    findAllMatches(regex, text) {
+    findAllMatchesOniguruma(regex, text) {
         const matches = [];
         
-        // Reset lastIndex for global regex
-        regex.lastIndex = 0;
-        
-        // For global flag, find all matches
-        if (this.flagCheckboxes.global.checked) {
-            let match;
-            while ((match = regex.exec(text)) !== null) {
-                matches.push({
-                    match: match,
-                    index: match.index,
-                    text: match[0],
-                    groups: match.slice(1) // Capture groups (excluding full match)
-                });
+        try {
+            // Use the findAll method from our Oniguruma wrapper
+            const onigMatches = regex.findAll(text);
+            
+            for (let i = 0; i < onigMatches.length; i++) {
+                const match = onigMatches[i];
+                // Get detailed match with captures
+                const detailedMatch = regex.search(text, match.index);
                 
-                // Prevent infinite loop for zero-length matches
-                if (match.index === regex.lastIndex) {
-                    regex.lastIndex++;
+                if (detailedMatch) {
+                    matches.push({
+                        text: detailedMatch.text,
+                        index: detailedMatch.index,
+                        captures: detailedMatch.captureIndices || []
+                    });
                 }
             }
-        } else {
-            // Single match
-            const match = regex.exec(text);
-            if (match) {
-                matches.push({
-                    match: match,
-                    index: match.index,
-                    text: match[0],
-                    groups: match.slice(1)
-                });
-            }
+            
+            // Clean up the regex
+            regex.dispose();
+            
+        } catch (error) {
+            throw new Error(`Oniguruma matching failed: ${error.message}`);
         }
         
         return matches;
@@ -208,21 +199,21 @@ Phone numbers:
     }
 
     displayCaptureGroups(matches) {
-        if (matches.length === 0 || !matches.some(m => m.groups.length > 0)) {
+        if (matches.length === 0 || !matches.some(m => m.captures && m.captures.length > 0)) {
             this.captureGroupsOutput.innerHTML = '<div class="no-captures">No capture groups</div>';
             return;
         }
 
         const groupsHtml = matches.map((matchData, matchIndex) => {
-            const { groups, index } = matchData;
+            const { captures } = matchData;
             
-            if (groups.length === 0) return '';
+            if (!captures || captures.length === 0) return '';
 
-            const matchGroupsHtml = groups.map((group, groupIndex) => {
-                if (group === null || group === undefined) {
+            const matchGroupsHtml = captures.map((capture, captureIndex) => {
+                if (!capture || capture.text === null || capture.text === undefined) {
                     return `
                         <div class="capture-group">
-                            <div class="capture-label">Group ${groupIndex + 1}:</div>
+                            <div class="capture-label">Group ${captureIndex}:</div>
                             <div class="capture-text" style="font-style: italic; color: #999;">
                                 (not captured)
                             </div>
@@ -230,14 +221,11 @@ Phone numbers:
                     `;
                 }
 
-                const groupStart = group.index !== undefined ? group.index : index;
-                const groupEnd = groupStart + (group.length || group.toString().length);
-
                 return `
                     <div class="capture-group">
-                        <div class="capture-label">Group ${groupIndex + 1}:</div>
-                        <div class="capture-text">${this.escapeHtml(group.toString())}</div>
-                        <div class="capture-info">Position: ${groupStart}-${groupEnd}</div>
+                        <div class="capture-label">Group ${captureIndex}:</div>
+                        <div class="capture-text">${this.escapeHtml(capture.text)}</div>
+                        <div class="capture-info">Position: ${capture.start}-${capture.end}</div>
                     </div>
                 `;
             }).join('');
