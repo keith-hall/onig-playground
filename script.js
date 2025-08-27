@@ -118,17 +118,19 @@ Phone numbers:
             // Use the findAll method from our Oniguruma wrapper
             const onigMatches = regex.findAll(text);
             
-            for (let i = 0; i < onigMatches.length; i++) {
-                const match = onigMatches[i];
-                // Get detailed match with captures
-                const detailedMatch = regex.search(text, match.index);
-                
-                if (detailedMatch) {
-                    matches.push({
-                        text: detailedMatch.text,
-                        index: detailedMatch.index,
-                        captures: detailedMatch.captureIndices || []
-                    });
+            if (onigMatches && onigMatches.length > 0) {
+                for (let i = 0; i < onigMatches.length; i++) {
+                    const match = onigMatches[i];
+                    // Get detailed match with captures
+                    const detailedMatch = regex.search(text, match.index);
+                    
+                    if (detailedMatch) {
+                        matches.push({
+                            text: detailedMatch.text,
+                            index: detailedMatch.index,
+                            captures: detailedMatch.captureIndices || []
+                        });
+                    }
                 }
             }
             
@@ -136,6 +138,10 @@ Phone numbers:
             regex.dispose();
             
         } catch (error) {
+            // Ensure cleanup even on error
+            if (regex && regex.dispose) {
+                regex.dispose();
+            }
             throw new Error(`Oniguruma matching failed: ${error.message}`);
         }
         
@@ -151,7 +157,7 @@ Phone numbers:
         }
 
         const matchesHtml = matches.map((matchData, index) => {
-            const { match, index: matchIndex, text } = matchData;
+            const { text, index: matchIndex, captures = [] } = matchData;
             const endIndex = matchIndex + text.length;
             
             return `
@@ -159,7 +165,7 @@ Phone numbers:
                     <div class="match-text">${this.escapeHtml(text)}</div>
                     <div class="match-info">
                         Match ${index + 1}: Position ${matchIndex}-${endIndex}
-                        ${match.length > 1 ? `• ${match.length - 1} capture group${match.length - 1 !== 1 ? 's' : ''}` : ''}
+                        ${captures.length > 0 ? `• ${captures.length - 1} capture group${captures.length - 1 !== 1 ? 's' : ''}` : ''}
                     </div>
                 </div>
             `;

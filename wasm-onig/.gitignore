@@ -1,0 +1,13 @@
+# Rust build artifacts
+target/
+
+# Generated WASM files should be included
+!lib/pkg/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
