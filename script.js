@@ -77,16 +77,16 @@ Phone numbers:
         }
 
         try {
-            // Initialize Oniguruma if not already initialized
-            if (!window.OnigurumaWrapper.isInitialized()) {
-                await window.OnigurumaWrapper.init();
+            // Initialize Onigasm if not already initialized
+            if (!window.OnigasmWrapper.isInitialized()) {
+                await window.OnigasmWrapper.init();
             }
 
             // Get selected flags
             const flags = this.getSelectedFlags();
             
-            // Create Oniguruma RegExp
-            const regex = new window.OnigurumaWrapper.OnigRegExp(regexPattern, flags);
+            // Create Onigasm RegExp
+            const regex = new window.OnigasmWrapper.OnigRegExp(regexPattern, flags);
             
             // Find all matches using our custom method
             const matches = this.findAllMatchesOniguruma(regex, testText);
