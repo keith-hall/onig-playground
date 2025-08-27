@@ -4,13 +4,14 @@ Interactive Oniguruma regex playground that runs in your browser. Test and exper
 
 ## Features
 
-- 🎯 **Real-time regex testing** with instant feedback
+- 🎯 **Real-time regex testing** with instant feedback using WebAssembly-powered Oniguruma
 - 🎨 **Visual match highlighting** in the test text
 - 📋 **Detailed capture group information** with positions
-- ⚙️ **Flag support** (Global, Multiline, Ignore Case, Extended)
+- ⚙️ **Full flag support** (Global, Multiline, Ignore Case, Extended) with real Oniguruma features
 - 📱 **Responsive design** that works on desktop and mobile
 - ⚡ **Debounced updates** for smooth performance
 - 🚨 **Error handling** with helpful messages
+- ✨ **Extended syntax support** - Free-spacing mode with comments and whitespace ignoring
 
 ## Live Demo
 
@@ -34,22 +35,28 @@ Try these example patterns to get started:
 - **Email addresses**: `[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`
 - **Phone numbers**: `\+?1?[-.\s]?\(?(\d{3})\)?[-.\s]?(\d{3})[-.\s]?(\d{4})`
 - **URLs**: `https?://[^\s]+`
+- **Extended syntax (with x flag)**: 
+  ```regex
+  (\w+) \s+ (\d{4}) - (\d{2}) - (\d{2}) # Extended syntax with comments and whitespace
+  ```
 
 ## Current Status
 
-This playground currently uses JavaScript's native regex engine as a demonstration. The interface is fully functional and ready for Oniguruma integration.
+✅ **Now powered by WebAssembly!** This playground uses a custom WebAssembly build of fancy-regex (providing Oniguruma-like features) for real regex processing. Extended flag (x) and other advanced features are fully supported!
 
 ## Technology
 
-- Pure HTML, CSS, and JavaScript
+- **WebAssembly-powered regex engine** using fancy-regex compiled to WASM
+- **Rust backend** with wasm-bindgen for browser compatibility
+- Pure HTML, CSS, and JavaScript frontend
 - Responsive CSS Grid layout
 - Debounced input handling
-- Real-time pattern matching
+- Real-time Oniguruma pattern matching
 - GitHub Pages deployment
 
 ## Development
 
-To run locally:
+### Running Locally
 
 ```bash
 # Clone the repository
@@ -63,6 +70,25 @@ npx serve .
 ```
 
 Then open http://localhost:8080 in your browser.
+
+### Building the WebAssembly Module
+
+To rebuild the WASM module (requires Rust and wasm-pack):
+
+```bash
+# Install Rust (if not already installed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+
+# Install wasm-pack
+cargo install wasm-pack
+
+# Build the WASM module
+cd wasm-onig
+wasm-pack build --target web --out-dir ../lib/pkg
+```
+
+The generated files in `lib/pkg/` are committed to the repository for convenience.
 
 ## Contributing
 
