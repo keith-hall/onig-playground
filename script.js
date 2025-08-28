@@ -77,19 +77,28 @@ Phone numbers:
         }
 
         try {
-            // Initialize Onigasm if not already initialized
-            if (!window.OnigasmWrapper.isInitialized()) {
-                await window.OnigasmWrapper.init();
+            // Try to use OnigasmWrapper first, fallback to JavaScript RegExp
+            let matches = [];
+            
+            if (window.OnigasmWrapper && window.OnigasmWrapper.isInitialized()) {
+                try {
+                    // Get selected flags
+                    const flags = this.getSelectedFlags();
+                    
+                    // Create Onigasm RegExp
+                    const regex = new window.OnigasmWrapper.OnigRegExp(regexPattern, flags);
+                    
+                    // Find all matches using our custom method
+                    matches = this.findAllMatchesOniguruma(regex, testText);
+                } catch (onigasmError) {
+                    // If Onigasm fails, show a warning and fallback to JavaScript RegExp
+                    this.showWarning(`Oniguruma WASM failed (${onigasmError.message}). Falling back to JavaScript RegExp with limited features.`);
+                    matches = this.findAllMatchesJavaScript(regexPattern, testText);
+                }
+            } else {
+                this.showWarning('Oniguruma WASM not available. Using JavaScript RegExp with limited features.');
+                matches = this.findAllMatchesJavaScript(regexPattern, testText);
             }
-
-            // Get selected flags
-            const flags = this.getSelectedFlags();
-            
-            // Create Onigasm RegExp
-            const regex = new window.OnigasmWrapper.OnigRegExp(regexPattern, flags);
-            
-            // Find all matches using our custom method
-            const matches = this.findAllMatchesOniguruma(regex, testText);
             
             // Update UI with results
             this.displayMatches(matches, testText);
@@ -109,6 +118,86 @@ Phone numbers:
         if (this.flagCheckboxes.extended.checked) flags += 'x';
         // Note: Global flag is handled differently in Oniguruma (it finds all matches by default)
         return flags;
+    }
+
+    findAllMatchesJavaScript(pattern, text) {
+        const matches = [];
+        
+        try {
+            // Get selected flags and convert to JavaScript RegExp flags
+            let jsFlags = '';
+            if (this.flagCheckboxes.global.checked) jsFlags += 'g';
+            if (this.flagCheckboxes.multiline.checked) jsFlags += 'm';
+            if (this.flagCheckboxes.ignorecase.checked) jsFlags += 'i';
+            // Note: Extended flag (x) is not supported in JavaScript RegExp
+            
+            const regex = new RegExp(pattern, jsFlags);
+            let match;
+            
+            if (jsFlags.includes('g')) {
+                // Global flag is set, find all matches
+                while ((match = regex.exec(text)) !== null) {
+                    const captures = [];
+                    
+                    // Add the full match and capture groups
+                    for (let i = 0; i < match.length; i++) {
+                        if (match[i] !== undefined) {
+                            captures.push({
+                                index: i,
+                                start: match.index + (i === 0 ? 0 : text.substring(match.index).indexOf(match[i])),
+                                end: match.index + (i === 0 ? 0 : text.substring(match.index).indexOf(match[i])) + match[i].length,
+                                text: match[i],
+                                match: match[i]
+                            });
+                        } else {
+                            captures.push(null);
+                        }
+                    }
+                    
+                    matches.push({
+                        text: match[0],
+                        index: match.index,
+                        captures: captures
+                    });
+                    
+                    // Prevent infinite loop on zero-width matches
+                    if (match[0].length === 0) {
+                        regex.lastIndex++;
+                    }
+                }
+            } else {
+                // No global flag, find only first match
+                match = regex.exec(text);
+                if (match) {
+                    const captures = [];
+                    
+                    for (let i = 0; i < match.length; i++) {
+                        if (match[i] !== undefined) {
+                            captures.push({
+                                index: i,
+                                start: match.index,
+                                end: match.index + match[i].length,
+                                text: match[i],
+                                match: match[i]
+                            });
+                        } else {
+                            captures.push(null);
+                        }
+                    }
+                    
+                    matches.push({
+                        text: match[0],
+                        index: match.index,
+                        captures: captures
+                    });
+                }
+            }
+            
+        } catch (error) {
+            throw new Error(`JavaScript RegExp matching failed: ${error.message}`);
+        }
+        
+        return matches;
     }
 
     findAllMatchesOniguruma(regex, text) {
