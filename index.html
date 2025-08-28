@@ -83,6 +83,34 @@
     </div>
 
     <script src="./lib/onigasm.js"></script>
+    <script>
+        // Configure Onigasm module after loading
+        if (typeof Onigasm === 'function') {
+            // Override the default module configuration
+            var originalOnigasm = Onigasm;
+            Onigasm = function(moduleConfig) {
+                moduleConfig = moduleConfig || {};
+                
+                // Add locateFile override to fix WASM path
+                moduleConfig.locateFile = function(path) {
+                    if (path === 'onigasm.wasm') {
+                        return './lib/onigasm.wasm';
+                    }
+                    return path;
+                };
+                
+                // Add print functions for browser environment
+                moduleConfig.print = function(text) {
+                    console.log(text);
+                };
+                moduleConfig.printErr = function(text) {
+                    console.error(text);
+                };
+                
+                return originalOnigasm(moduleConfig);
+            };
+        }
+    </script>
     <script src="./lib/onigasm-wrapper.js"></script>
     <script src="script.js"></script>
 </body>
