@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use onig::{Regex, RegexBuilder, Syntax};
+use fancy_regex::Regex;
 use std::collections::HashMap;
 
 // Static storage for compiled regexes (indexed by handle)
@@ -49,21 +49,20 @@ impl MatchResult {
 // Compile a regex pattern and return a handle to it
 #[wasm_bindgen]
 pub fn compile_pattern(pattern: &str, flags: u32) -> u32 {
-    let mut builder = RegexBuilder::new(pattern);
-    builder.syntax(Syntax::default());
+    // Apply flags to the pattern string
+    let mut regex_pattern = String::new();
     
-    // Apply flags
+    // fancy-regex uses inline flags
     if flags & 1 != 0 { // ignore case
-        builder.case_insensitive(true);
+        regex_pattern.push_str("(?i)");
     }
     if flags & 4 != 0 { // multiline
-        builder.multi_line(true);
+        regex_pattern.push_str("(?m)");
     }
-    if flags & 2 != 0 { // extended (free-spacing)
-        builder.syntax(Syntax::perl());
-    }
+    // Add the original pattern
+    regex_pattern.push_str(pattern);
     
-    match builder.build() {
+    match Regex::new(&regex_pattern) {
         Ok(regex) => {
             unsafe {
                 let handle = NEXT_HANDLE;
@@ -99,25 +98,25 @@ pub fn find_match(handle: u32, text: &str, start_pos: usize) -> MatchResult {
                     };
                 };
 
-                if let Some(captures) = regex.captures(search_text) {
+                if let Ok(Some(captures)) = regex.captures(search_text) {
                     let mut capture_positions = Vec::new();
                     
                     // Add all capture groups (including the full match as group 0)
                     for i in 0..captures.len() {
-                        if let Some(pos) = captures.pos(i) {
-                            capture_positions.push((pos.0 + start_pos) as u32); // start (adjusted)
-                            capture_positions.push((pos.1 + start_pos) as u32); // end (adjusted)
+                        if let Some(mat) = captures.get(i) {
+                            capture_positions.push((mat.start() + start_pos) as u32); // start (adjusted)
+                            capture_positions.push((mat.end() + start_pos) as u32); // end (adjusted)
                         } else {
                             capture_positions.push(u32::MAX); // no match
                             capture_positions.push(u32::MAX);
                         }
                     }
 
-                    if let Some(full_match) = captures.pos(0) {
+                    if let Some(full_match) = captures.get(0) {
                         return MatchResult {
                             found: true,
-                            start: (full_match.0 + start_pos) as u32,
-                            end: (full_match.1 + start_pos) as u32,
+                            start: (full_match.start() + start_pos) as u32,
+                            end: (full_match.end() + start_pos) as u32,
                             captures: capture_positions,
                         };
                     }
@@ -145,9 +144,9 @@ pub fn find_all_matches(handle: u32, text: &str) -> Vec<u32> {
                 let mut start = 0;
                 while start < text.len() {
                     let search_text = &text[start..];
-                    if let Some(pos) = regex.find(search_text) {
-                        let absolute_start = start + pos.0;
-                        let absolute_end = start + pos.1;
+                    if let Ok(Some(mat)) = regex.find(search_text) {
+                        let absolute_start = start + mat.start();
+                        let absolute_end = start + mat.end();
                         results.push(absolute_start as u32);
                         results.push(absolute_end as u32);
                         start = absolute_end;
