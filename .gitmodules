@@ -1,3 +1,6 @@
 [submodule "emsdk"]
 	path = emsdk
 	url = https://github.com/emscripten-core/emsdk.git
+[submodule "oniguruma"]
+	path = oniguruma
+	url = https://github.com/kkos/oniguruma
