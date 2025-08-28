@@ -77,16 +77,16 @@ Phone numbers:
         }
 
         try {
-            // Initialize Onigasm if not already initialized
-            if (!window.OnigasmWrapper.isInitialized()) {
-                await window.OnigasmWrapper.init();
+            // Initialize Oniguruma if not already initialized
+            if (!window.OnigWrapper.isReady()) {
+                await window.OnigWrapper.init();
             }
 
             // Get selected flags
             const flags = this.getSelectedFlags();
             
-            // Create Onigasm RegExp
-            const regex = new window.OnigasmWrapper.OnigRegExp(regexPattern, flags);
+            // Create Oniguruma RegExp
+            const regex = new window.OnigRegExp(regexPattern, flags);
             
             // Find all matches using our custom method
             const matches = this.findAllMatchesOniguruma(regex, testText);
@@ -124,12 +124,29 @@ Phone numbers:
                     // Get detailed match with captures
                     const detailedMatch = regex.search(text, match.index);
                     
-                    if (detailedMatch) {
-                        matches.push({
-                            text: detailedMatch.text,
-                            index: detailedMatch.index,
-                            captures: detailedMatch.captureIndices || []
-                        });
+                    if (detailedMatch && detailedMatch.captureIndices && detailedMatch.captureIndices.length > 0) {
+                        const fullMatch = detailedMatch.captureIndices[0];
+                        if (fullMatch) {
+                            const matchText = text.substring(fullMatch.start, fullMatch.end);
+                            
+                            // Convert capture indices to the expected format with text
+                            const captures = detailedMatch.captureIndices.map(capture => {
+                                if (capture && capture.start !== undefined && capture.end !== undefined) {
+                                    return {
+                                        text: text.substring(capture.start, capture.end),
+                                        start: capture.start,
+                                        end: capture.end
+                                    };
+                                }
+                                return null;
+                            });
+                            
+                            matches.push({
+                                text: matchText,
+                                index: fullMatch.start,
+                                captures: captures
+                            });
+                        }
                     }
                 }
             }

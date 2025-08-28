@@ -13,6 +13,5 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "onigasm": "^2.2.5"
   }
 }
