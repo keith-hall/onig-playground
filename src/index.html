@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oniguruma Regex Playground</title>
+    <link rel="stylesheet" href="style.css">
+
+    <script src="onig.js"></script>
+</head>
+<body>
+
+<h1>Onig Playground Test</h1>
+<script>
+Module().then(Module => {
+  console.log("Oniguruma WASM loaded");
+  const text = "foo bar foo baz";
+  const pattern = "(foo)";
+
+  const maxMatches = 10;
+  let numGroupsPtr = Module._malloc(4); // int*
+  let buffer = Module._malloc(maxMatches * 4 * 2 * 2); 
+  // explanation: maxMatches * numGroups (up to 2 here) * 2 ints (start,len)
+
+  let count = Module.ccall("match_all", "number",
+                           ["string","string","number","number","number"],
+                           [pattern, text, buffer, maxMatches*4*2*2, numGroupsPtr]);
+
+  let numGroups = Module.getValue(numGroupsPtr, "i32");
+  Module._free(numGroupsPtr);
+
+  console.log("Matches found:", count, "Groups per match:", numGroups);
+
+  let results = [];
+  for (let m = 0; m < count; m++) {
+    let groups = [];
+    for (let g = 0; g < numGroups; g++) {
+      let start = Module.getValue(buffer + (m*numGroups*2 + g*2)*4, "i32");
+      let len   = Module.getValue(buffer + (m*numGroups*2 + g*2 + 1)*4, "i32");
+      groups.push({ start, length: len });
+    }
+    results.push(groups);
+  }
+  Module._free(buffer);
+
+  console.log("Results:", results);
+  // Example output:
+  // [
+  //   [ {start:0,length:3}, {start:0,length:3} ],
+  //   [ {start:8,length:3}, {start:8,length:3} ]
+  // ]
+});
+</script>
+
+</body>
+</html>
