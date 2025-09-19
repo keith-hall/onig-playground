@@ -5,7 +5,7 @@ git submodule update --init
 
 pushd oniguruma
 
-EMSCRIPTEN_VERSION=4.0.14-arm64
+EMSCRIPTEN_VERSION=4.0.14
 
 # TODO: only skip if already configured
 

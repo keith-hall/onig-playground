@@ -3,7 +3,7 @@ set -euo pipefail
 
 # expects prepare.sh to have been called first
 
-EMSCRIPTEN_VERSION=4.0.14-arm64
+EMSCRIPTEN_VERSION=4.0.14
 
 mkdir -p dist
 
