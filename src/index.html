@@ -5,52 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Oniguruma Regex Playground</title>
     <link rel="stylesheet" href="style.css">
-
-    <script src="onig.js"></script>
 </head>
 <body>
+    <div class="container">
+        <header>
+            <h1>Oniguruma Regex Playground</h1>
+            <p>Test and experiment with Oniguruma regex patterns in real-time</p>
+            <div style="background: rgba(255,255,255,0.1); padding: 0.75rem; margin-top: 1rem; border-radius: 4px; font-size: 0.9rem;">
+                <strong>✨ Powered by Oniguruma WASM!</strong> This playground uses the actual Oniguruma regex engine compiled to WebAssembly for accurate pattern matching.
+            </div>
+        </header>
 
-<h1>Onig Playground Test</h1>
-<script>
-OnigModule().then(Module => {
-  console.log("Oniguruma WASM loaded");
-  const text = "foo bar foo baz";
-  const pattern = "(foo)";
+        <main>
+            <div class="input-section">
+                <div class="regex-section">
+                    <label for="regex-input">Regular Expression Pattern</label>
+                    <textarea id="regex-input" rows="3" placeholder="Enter your regex pattern here (e.g., (\w+)\s+(\d{4})-(\d{2})-(\d{2}))">(\w+)\s+(\d{4})-(\d{2})-(\d{2})</textarea>
+                    
+                    <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <label for="buffer-size" style="white-space: nowrap; font-size: 0.9rem;">Max matches × groups buffer size:</label>
+                        <input type="number" id="buffer-size" value="200" min="10" max="10000" style="width: 80px; padding: 0.25rem; border: 1px solid #e9ecef; border-radius: 3px;">
+                        <small style="color: #6c757d;">Increase if you expect many matches or capture groups</small>
+                    </div>
+                </div>
 
-  const maxMatches = 10;
-  let numGroupsPtr = Module._malloc(4); // int*
-  let buffer = Module._malloc(maxMatches * 4 * 2 * 2); 
-  // explanation: maxMatches * numGroups (up to 2 here) * 2 ints (start,len)
+                <div class="text-section">
+                    <label for="text-input">Test Text (Haystack)</label>
+                    <textarea id="text-input" rows="8" placeholder="Enter text to test your regex against">Sample data for testing regex patterns:
+Product ABC123 released on 2023-12-01
+Service XYZ789 launched 2024-01-15
+Update DEF456 scheduled for 2024-03-22
 
-  let count = Module.ccall("match_all", "number",
-                           ["string","string","number","number","number"],
-                           [pattern, text, buffer, maxMatches*4*2*2, numGroupsPtr]);
+Email addresses:
+john.doe@example.com
+jane_smith@company.org
+test.user123@domain.co.uk
 
-  let numGroups = Module.getValue(numGroupsPtr, "i32");
-  Module._free(numGroupsPtr);
+Phone numbers:
++1-555-123-4567
+(555) 987-6543
+555.456.7890</textarea>
+                </div>
+            </div>
 
-  console.log("Matches found:", count, "Groups per match:", numGroups);
+            <div class="output-section">
+                <div class="error-section" id="error-section" style="display: none;">
+                    <h3>Error</h3>
+                    <div id="error-output"></div>
+                </div>
 
-  let results = [];
-  for (let m = 0; m < count; m++) {
-    let groups = [];
-    for (let g = 0; g < numGroups; g++) {
-      let start = Module.getValue(buffer + (m*numGroups*2 + g*2)*4, "i32");
-      let len   = Module.getValue(buffer + (m*numGroups*2 + g*2 + 1)*4, "i32");
-      groups.push({ start, length: len });
-    }
-    results.push(groups);
-  }
-  Module._free(buffer);
+                <div class="matches-section">
+                    <h3>Matches Found <span id="match-count">(0)</span></h3>
+                    <div id="matches-output">
+                        <div class="no-matches">No matches found. Try entering a regex pattern above.</div>
+                    </div>
+                </div>
 
-  console.log("Results:", results);
-  // Example output:
-  // [
-  //   [ {start:0,length:3}, {start:0,length:3} ],
-  //   [ {start:8,length:3}, {start:8,length:3} ]
-  // ]
-});
-</script>
+                <div class="highlighted-text-section">
+                    <h3>Highlighted Text</h3>
+                    <div id="highlighted-text">Enter a regex pattern and text to see highlighted matches.</div>
+                </div>
 
+                <div class="capture-groups-section">
+                    <h3>Capture Groups</h3>
+                    <div id="capture-groups-output">
+                        <div class="no-captures">No capture groups to display.</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>
+                Built with <strong>Oniguruma</strong> - The powerful regex engine used by Ruby, VS Code, and more.
+                <a href="https://github.com/kkos/oniguruma" target="_blank">Learn more</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="onig.js"></script>
+    <script src="playground.js"></script>
 </body>
 </html>
