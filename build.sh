@@ -1,32 +1,17 @@
 #!/bin/sh
+set -euo pipefail
+
 # expects prepare.sh to have been called first
-# TODO: set pipefail etc.
 
-pushd ./emsdk
-./emsdk activate latest
-source ./emsdk_env.sh
-popd
+EMSCRIPTEN_VERSION=4.0.14-arm64
 
-# emcc ./src/.libs/libonig.a \                                               
-#   -I./src \   
-#   -s EXPORTED_FUNCTIONS='["_onig_new", "_onig_free", "_onig_search", "_onig_match", "_onig_error_code_to_str"]' \
-#   -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
-#   -o onig.js   
- 
-# emcc ../src/wrapper/wrapper.c ./src/.libs/libonig.a -I./src \
-#   -s EXPORTED_FUNCTIONS='["_match_all"]' \
-#   -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","getValue"]' \
-#   -s EXPORT_NAME=OnigModule \
-#   -o onig.js
+mkdir -p dist
 
-# emcc ../src/wrapper/wrapper.c ./src/.libs/libonig.a -I./src \
-#   -s EXPORTED_FUNCTIONS='["_match_all", "_malloc", "_free"]' \
-#   -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","getValue"]' \
-#   -s EXPORT_NAME=OnigModule \
-#   -o onig.js
-
-cd oniguruma
-emcc ../src/wrapper/wrapper.c ./src/.libs/libonig.a -I./src \
+docker run \
+  --rm \
+  -v $(pwd):$(pwd):rw \
+  emscripten/emsdk:$EMSCRIPTEN_VERSION \
+  emcc $(pwd)/src/wrapper/wrapper.c $(pwd)/oniguruma/src/.libs/libonig.a -I$(pwd)/oniguruma/src/ \
   -O3 \
   -s EXPORT_NAME=OnigModule \
   -s MODULARIZE=1 \
@@ -34,14 +19,11 @@ emcc ../src/wrapper/wrapper.c ./src/.libs/libonig.a -I./src \
   -s ENVIRONMENT=web \
   -s EXPORTED_FUNCTIONS='["_match_all","_malloc","_free"]' \
   -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","getValue","UTF8ToString","stringToUTF8"]' \
-  -o onig.js
+  -o $(pwd)/dist/onig.js
 
+cp ./src/index.html ./dist/
+cp ./src/style.css ./dist/
 
-cp onig.js ../dist/
-cp onig.wasm ../dist/
-cp ../src/index.html ../dist/
-cp ../src/style.css ../dist/
-
-cd ../dist/
+cd ./dist/
 python3 -m http.server
 
