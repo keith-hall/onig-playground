@@ -31,5 +31,5 @@ cp ./src/test.html ./dist/
 cp ./src/test.js ./dist/
 
 cd ./dist/
-python3 -m http.server
 
+#python3 -m http.server

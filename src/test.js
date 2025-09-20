@@ -88,11 +88,11 @@ class OnigPlaygroundTests {
                 const result = this.callMatchAll(testCase.pattern, testCase.text);
                 console.log(`  Pattern "${testCase.pattern}" on "${testCase.text}": found ${result.matchCount} matches`);
                 
-                // Check that we got some matches (exact count may vary by implementation)
-                if (result.matchCount > 0 && result.matchCount <= testCase.text.length + 2) {
+                // Check that we got the right number of matches
+                if (result.matchCount == testCase.expectedMatches) {
                     console.log(`  ✓ Pattern handled correctly with ${result.matchCount} matches`);
                 } else {
-                    console.log(`  ✗ Unexpected match count: ${result.matchCount}`);
+                    console.log(`  ✗ Unexpected match count: ${result.matchCount} matches found, expecting ${testCase.expectedMatches}`);
                     return false;
                 }
             } catch (error) {

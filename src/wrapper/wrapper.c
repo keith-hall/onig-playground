@@ -83,13 +83,13 @@ int match_all(const char* pattern,
     int count = 0;
     int buf_pos = 0;
 
-    while (start <= end) {
-        r = onig_search(reg, str, end, start, end, region, ONIG_OPTION_NONE);
-        if (r < 0) break; // no more matches
-
+    while (start < end) {
         if (buf_pos + num_groups*2 > buffer_size) {
             break; // no more room
         }
+
+        r = onig_search(reg, str, end, start, end, region, ONIG_OPTION_NONE);
+        if (r < 0) break; // no more matches
 
         for (int g = 0; g < num_groups; g++) {
             int beg = region->beg[g];
@@ -102,7 +102,7 @@ int match_all(const char* pattern,
         
         // Fix for zero-length matches: advance at least one character
         const OnigUChar* next_start = str + region->end[0];
-        if (next_start == start) {
+        if (next_start <= start) {
             // Zero-length match, advance by one character to avoid infinite loop
             next_start = start + 1;
         }
