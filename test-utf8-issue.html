@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UTF-8/UTF-16 Boundary Issue Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .test-case { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+        .error { background: #ffe6e6; }
+        .success { background: #e6ffe6; }
+    </style>
+</head>
+<body>
+    <h1>UTF-8/UTF-16 Boundary Issue Test</h1>
+    
+    <div class="test-case">
+        <h3>Test Case: Greek Delta with Backreference</h3>
+        <p><strong>Pattern:</strong> <code>(?i)(\w+)\s+\k&lt;1&gt;</code></p>
+        <p><strong>Text:</strong> Greek deltas: "Δ δ 😀" (uppercase delta, space, lowercase delta, space, emoji)</p>
+        <p><strong>Expected:</strong> Should match "Δ δ" with capture group 1 containing "Δ"</p>
+        <div id="test-result-1" class="result">Testing...</div>
+    </div>
+
+    <div class="test-case">
+        <h3>UTF-8 vs UTF-16 Analysis</h3>
+        <div id="utf-analysis" class="result">Analyzing...</div>
+    </div>
+
+    <script>
+        function analyzeUtfDifferences() {
+            const testText = "Δ δ 😀";
+            console.log("Test text:", testText);
+            
+            // UTF-16 analysis
+            console.log("UTF-16 length:", testText.length);
+            for (let i = 0; i < testText.length; i++) {
+                const char = testText[i];
+                const codePoint = testText.codePointAt(i);
+                console.log(`Index ${i}: "${char}" (U+${codePoint.toString(16).toUpperCase().padStart(4, '0')})`);
+            }
+            
+            // UTF-8 analysis
+            const utf8Bytes = new TextEncoder().encode(testText);
+            console.log("UTF-8 bytes:", utf8Bytes);
+            console.log("UTF-8 byte length:", utf8Bytes.length);
+            
+            // Show byte positions
+            let utf16Index = 0;
+            let utf8Index = 0;
+            const mapping = [];
+            
+            for (const char of testText) {
+                const utf8Length = new TextEncoder().encode(char).length;
+                mapping.push({
+                    char: char,
+                    utf16Index: utf16Index,
+                    utf8Index: utf8Index,
+                    utf8Length: utf8Length
+                });
+                utf16Index++;
+                utf8Index += utf8Length;
+            }
+            
+            console.log("UTF-16 to UTF-8 mapping:", mapping);
+            
+            const analysisDiv = document.getElementById('utf-analysis');
+            analysisDiv.innerHTML = `
+                <strong>Text:</strong> "${testText}"<br>
+                <strong>UTF-16 length:</strong> ${testText.length}<br>
+                <strong>UTF-8 byte length:</strong> ${utf8Bytes.length}<br>
+                <strong>Mapping:</strong><br>
+                ${mapping.map(m => `"${m.char}": UTF-16[${m.utf16Index}] → UTF-8[${m.utf8Index}-${m.utf8Index + m.utf8Length - 1}]`).join('<br>')}
+            `;
+        }
+        
+        function testPositionConversion() {
+            const text = "Δ δ 😀";
+            const utf8Bytes = new TextEncoder().encode(text);
+            
+            // Test converting UTF-8 byte position back to UTF-16 position
+            function utf8BytePosToUtf16Pos(utf8Pos) {
+                if (utf8Pos === 0) return 0;
+                
+                // Convert bytes up to position back to string and get length
+                const bytesUpToPos = utf8Bytes.slice(0, utf8Pos);
+                const stringUpToPos = new TextDecoder().decode(bytesUpToPos);
+                return stringUpToPos.length;
+            }
+            
+            console.log("Position conversion test:");
+            for (let i = 0; i < utf8Bytes.length; i++) {
+                const utf16Pos = utf8BytePosToUtf16Pos(i);
+                console.log(`UTF-8 byte ${i} → UTF-16 position ${utf16Pos}`);
+            }
+        }
+        
+        // Mock regex test (without actual WASM)
+        function mockRegexTest() {
+            const pattern = "(?i)(\\w+)\\s+\\k<1>";
+            const text = "Δ δ 😀";
+            
+            // This would be the expected match if the regex engine works correctly
+            // Δ (capital delta) and δ (lowercase delta) should match as the same word with case-insensitive flag
+            
+            const resultDiv = document.getElementById('test-result-1');
+            resultDiv.innerHTML = `
+                <strong>Pattern:</strong> ${pattern}<br>
+                <strong>Text:</strong> "${text}"<br>
+                <strong>Issue:</strong> Oniguruma regex with backreference \\k&lt;1&gt; should match case-insensitive "Δ δ"<br>
+                <strong>Problem:</strong> UTF-8 byte positions from WASM need proper conversion to UTF-16 string positions for JavaScript highlighting<br>
+                <strong>Analysis:</strong> Need to test actual implementation once WASM module is available
+            `;
+            resultDiv.className = 'result error';
+        }
+        
+        // Run tests
+        analyzeUtfDifferences();
+        testPositionConversion();
+        mockRegexTest();
+    </script>
+</body>
+</html>
