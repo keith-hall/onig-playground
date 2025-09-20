@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oniguruma Regex Playground (Mock Test)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Oniguruma Regex Playground (Mock Test)</h1>
+            <p>Test and experiment with Oniguruma regex patterns in real-time</p>
+            <div style="background: rgba(255,255,255,0.1); padding: 0.75rem; margin-top: 1rem; border-radius: 4px; font-size: 0.9rem;">
+                <strong>🧪 Mock Testing Mode!</strong> This version uses a JavaScript RegExp mock for testing emoji handling. 
+                Real Oniguruma features may behave differently.
+            </div>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <div class="regex-section">
+                    <label for="regex-input">Regular Expression:</label>
+                    <textarea 
+                        id="regex-input" 
+                        placeholder="Enter your regex pattern here"
+                        rows="3"
+                    ></textarea>
+                    <div class="flags-section">
+                        <label>Flags:</label>
+                        <div class="flags">
+                            <label><input type="checkbox" id="flag-global" value="g"> Global (g)</label>
+                            <label><input type="checkbox" id="flag-multiline" value="m"> Multiline (m)</label>
+                            <label><input type="checkbox" id="flag-ignorecase" value="i"> Ignore Case (i)</label>
+                            <label><input type="checkbox" id="flag-extended" value="x"> Extended (x)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-section">
+                    <label for="text-input">Test Text:</label>
+                    <textarea 
+                        id="text-input" 
+                        placeholder="Enter the text you want to test against the regex..."
+                        rows="10"
+                    ></textarea>
+                </div>
+            </div>
+
+            <div class="output-section">
+                <div class="error-section" id="error-section" style="display: none;">
+                    <h3>Errors:</h3>
+                    <div id="error-output"></div>
+                </div>
+
+                <div class="matches-section">
+                    <h3>Matches <span id="match-count">(0 matches)</span>:</h3>
+                    <div id="matches-output">
+                        <div class="no-matches">No matches found</div>
+                    </div>
+                </div>
+
+                <div class="highlighted-text-section">
+                    <h3>Highlighted Text:</h3>
+                    <div id="highlighted-text"></div>
+                </div>
+
+                <div class="capture-groups-section">
+                    <h3>Capture Groups:</h3>
+                    <div id="capture-groups-output">
+                        <div class="no-captures">No capture groups</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>
+                Mock testing mode using JavaScript RegExp - 
+                <button onclick="loadEmojiExample()">Load Emoji Test</button>
+            </p>
+        </footer>
+    </div>
+
+    <script src="./lib/mock-onigasm-wrapper.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Override the example to include emojis
+        function loadEmojiExample() {
+            document.getElementById('regex-input').value = '\\w+';
+            document.getElementById('text-input').value = '👋 Hello 🌟 world 🚀 testing emoji 🎉 handling correctly ✨';
+            
+            // Set flags
+            document.getElementById('flag-global').checked = true;
+            document.getElementById('flag-multiline').checked = true;
+            
+            // Trigger processing
+            const playground = new OnigPlayground();
+            playground.processRegex();
+        }
+    </script>
+</body>
+</html>
