@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Testing - Oniguruma Regex Playground</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        .results {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .highlight-match {
+            background-color: #ffeaa7;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .test-case {
+            background: #e9ecef;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .test-case h4 {
+            margin-top: 0;
+            color: #6c757d;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .pass {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .fail {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Emoji Testing for Oniguruma Regex Playground</h1>
+        <p>Testing emoji handling in the haystack text to ensure correct position calculations and display.</p>
+        
+        <div class="test-section">
+            <h3>Manual Testing Interface</h3>
+            <label for="pattern">Regex Pattern:</label>
+            <textarea id="pattern" rows="2" placeholder="Enter regex pattern">\w+</textarea>
+            
+            <label for="testText">Test Text (with emojis):</label>
+            <textarea id="testText" rows="4" placeholder="Enter text with emojis">👋 hello 🌟 world 🚀 test</textarea>
+            
+            <button onclick="runManualTest()">Test Regex</button>
+            <button onclick="loadEmojiTests()">Load Emoji Test Cases</button>
+            
+            <div id="manualResults" class="results" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Automated Emoji Test Cases</h3>
+            <button onclick="runAllEmojiTests()">Run All Emoji Tests</button>
+            <div id="testResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Highlighted Text Preview</h3>
+            <p>This shows how matches are highlighted in text containing emojis:</p>
+            <div id="highlightedPreview" class="results"></div>
+        </div>
+    </div>
+
+    <script src="./lib/mock-onigasm-wrapper.js"></script>
+    <script>
+        let playground = null;
+        
+        // Initialize mock wrapper
+        async function initializePlayground() {
+            if (!window.OnigasmWrapper.isInitialized()) {
+                await window.OnigasmWrapper.init();
+            }
+        }
+        
+        async function runManualTest() {
+            const pattern = document.getElementById('pattern').value;
+            const testText = document.getElementById('testText').value;
+            const resultsEl = document.getElementById('manualResults');
+            
+            if (!pattern.trim()) {
+                resultsEl.textContent = 'Please enter a regex pattern';
+                resultsEl.style.display = 'block';
+                return;
+            }
+            
+            try {
+                await initializePlayground();
+                
+                const regex = new window.OnigasmWrapper.OnigRegExp(pattern, 'g');
+                const matches = regex.findAll(testText);
+                
+                let results = `Pattern: ${pattern}\nText: ${testText}\n\n`;
+                results += `Found ${matches.length} match${matches.length !== 1 ? 'es' : ''}:\n\n`;
+                
+                matches.forEach((match, index) => {
+                    results += `Match ${index + 1}: "${match.text}" at position ${match.index}\n`;
+                    
+                    // Show the text around the match for context
+                    const beforeText = testText.substring(Math.max(0, match.index - 5), match.index);
+                    const afterText = testText.substring(match.index + match.text.length, Math.min(testText.length, match.index + match.text.length + 5));
+                    results += `  Context: "${beforeText}[${match.text}]${afterText}"\n\n`;
+                });
+                
+                // Show highlighted text
+                updateHighlightedPreview(matches, testText);
+                
+                regex.dispose();
+                
+                resultsEl.textContent = results;
+                resultsEl.style.display = 'block';
+                
+            } catch (error) {
+                resultsEl.textContent = `Error: ${error.message}`;
+                resultsEl.style.display = 'block';
+            }
+        }
+        
+        function updateHighlightedPreview(matches, text) {
+            const previewEl = document.getElementById('highlightedPreview');
+            
+            if (matches.length === 0) {
+                previewEl.textContent = text;
+                return;
+            }
+            
+            let highlightedText = '';
+            let lastIndex = 0;
+            
+            // Sort matches by index to handle overlapping correctly
+            const sortedMatches = [...matches].sort((a, b) => a.index - b.index);
+            
+            sortedMatches.forEach(match => {
+                // Add text before the match
+                highlightedText += escapeHtml(text.substring(lastIndex, match.index));
+                
+                // Add highlighted match
+                highlightedText += `<span class="highlight-match">${escapeHtml(match.text)}</span>`;
+                
+                lastIndex = match.index + match.text.length;
+            });
+            
+            // Add remaining text
+            highlightedText += escapeHtml(text.substring(lastIndex));
+            
+            previewEl.innerHTML = highlightedText;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function runAllEmojiTests() {
+            const resultsEl = document.getElementById('testResults');
+            resultsEl.innerHTML = '<p>Running emoji tests...</p>';
+            
+            try {
+                await initializePlayground();
+                
+                const testCases = [
+                    {
+                        name: 'Simple emoji before match',
+                        pattern: '\\w+',
+                        text: '👋 hello',
+                        expectedMatches: 1,
+                        expectedMatchText: 'hello',
+                        expectedPosition: 2 // Position after emoji and space
+                    },
+                    {
+                        name: 'Multiple emojis before match',
+                        pattern: '\\d+',
+                        text: '🚀🎉🎯 123',
+                        expectedMatches: 1,
+                        expectedMatchText: '123',
+                        expectedPosition: 7 // Position after emojis and space
+                    },
+                    {
+                        name: 'Complex emoji sequence',
+                        pattern: 'test',
+                        text: '👨‍💻👩‍🎨 test end',
+                        expectedMatches: 1,
+                        expectedMatchText: 'test',
+                        expectedPosition: 9 // Position after complex emojis and space
+                    },
+                    {
+                        name: 'Emojis at different positions',
+                        pattern: 'word',
+                        text: '🌟start🎯middle🚀word🎉end✨',
+                        expectedMatches: 1,
+                        expectedMatchText: 'word'
+                    },
+                    {
+                        name: 'Emoji in match text',
+                        pattern: '\\S+👋\\S+',
+                        text: 'hello👋world test',
+                        expectedMatches: 1,
+                        expectedMatchText: 'hello👋world'
+                    }
+                ];
+                
+                let resultsHtml = '<h4>Test Results:</h4>';
+                let passCount = 0;
+                let totalTests = testCases.length;
+                
+                for (const testCase of testCases) {
+                    try {
+                        const regex = new window.OnigasmWrapper.OnigRegExp(testCase.pattern, 'g');
+                        const matches = regex.findAll(testCase.text);
+                        
+                        let testPassed = true;
+                        let errorMessage = '';
+                        
+                        // Check match count
+                        if (matches.length !== testCase.expectedMatches) {
+                            testPassed = false;
+                            errorMessage += `Expected ${testCase.expectedMatches} matches, got ${matches.length}. `;
+                        }
+                        
+                        // Check match text
+                        if (matches.length > 0 && testCase.expectedMatchText) {
+                            if (matches[0].text !== testCase.expectedMatchText) {
+                                testPassed = false;
+                                errorMessage += `Expected match text "${testCase.expectedMatchText}", got "${matches[0].text}". `;
+                            }
+                        }
+                        
+                        // Check position if specified
+                        if (matches.length > 0 && testCase.expectedPosition !== undefined) {
+                            if (matches[0].index !== testCase.expectedPosition) {
+                                testPassed = false;
+                                errorMessage += `Expected position ${testCase.expectedPosition}, got ${matches[0].index}. `;
+                            }
+                        }
+                        
+                        const statusClass = testPassed ? 'pass' : 'fail';
+                        const statusText = testPassed ? 'PASS' : 'FAIL';
+                        
+                        if (testPassed) passCount++;
+                        
+                        resultsHtml += `
+                            <div class="test-case">
+                                <h4>${testCase.name} - <span class="${statusClass}">${statusText}</span></h4>
+                                <p><strong>Pattern:</strong> ${testCase.pattern}</p>
+                                <p><strong>Text:</strong> ${testCase.text}</p>
+                                <p><strong>Found:</strong> ${matches.length} match${matches.length !== 1 ? 'es' : ''}</p>
+                                ${matches.length > 0 ? `<p><strong>Match:</strong> "${matches[0].text}" at position ${matches[0].index}</p>` : ''}
+                                ${errorMessage ? `<p style="color: #dc3545;"><strong>Error:</strong> ${errorMessage}</p>` : ''}
+                            </div>
+                        `;
+                        
+                        regex.dispose();
+                        
+                    } catch (error) {
+                        resultsHtml += `
+                            <div class="test-case">
+                                <h4>${testCase.name} - <span class="fail">ERROR</span></h4>
+                                <p style="color: #dc3545;"><strong>Error:</strong> ${error.message}</p>
+                            </div>
+                        `;
+                    }
+                }
+                
+                resultsHtml = `<p><strong>Summary:</strong> ${passCount}/${totalTests} tests passed</p>` + resultsHtml;
+                resultsEl.innerHTML = resultsHtml;
+                
+            } catch (error) {
+                resultsEl.innerHTML = `<p style="color: #dc3545;">Test execution failed: ${error.message}</p>`;
+            }
+        }
+        
+        function loadEmojiTests() {
+            document.getElementById('pattern').value = '\\w+';
+            document.getElementById('testText').value = '👋 hello 🌟 world 🚀 test 🎉 end';
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializePlayground();
+        });
+    </script>
+</body>
+</html>

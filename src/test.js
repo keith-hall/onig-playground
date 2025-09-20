@@ -189,6 +189,166 @@ class OnigPlaygroundTests {
         }
     }
 
+    testEmojiHandling() {
+        // Test that emojis in the haystack are handled correctly
+        const testCases = [
+            {
+                name: 'Simple emoji before match',
+                pattern: '\\w+',
+                text: '👋 hello',
+                expectedMatches: 1,
+                expectedMatchText: 'hello',
+                expectedMatchStart: 2 // Position after emoji (👋 is 2 UTF-16 code units)
+            },
+            {
+                name: 'Emoji within match text',
+                pattern: '\\S+',
+                text: 'hello👋world',
+                expectedMatches: 1,
+                expectedMatchText: 'hello👋world',
+                expectedMatchStart: 0
+            },
+            {
+                name: 'Multiple emojis before match',
+                pattern: '\\d+',
+                text: '🚀🎉🎯 123',
+                expectedMatches: 1,
+                expectedMatchText: '123',
+                expectedMatchStart: 7 // Position after three emojis and space
+            },
+            {
+                name: 'Emoji in capture group',
+                pattern: '(\\S+)\\s+(\\d+)',
+                text: 'user👤 42',
+                expectedMatches: 1,
+                expectedMatchText: 'user👤 42',
+                expectedMatchStart: 0
+            },
+            {
+                name: 'Complex emoji sequence',
+                pattern: 'test',
+                text: '👨‍💻👩‍🎨 test',
+                expectedMatches: 1,
+                expectedMatchText: 'test',
+                expectedMatchStart: 9 // Position after complex emoji sequence and space
+            },
+            {
+                name: 'Emojis at different positions',
+                pattern: 'word',
+                text: '🌟start🎯middle🚀word🎉end✨',
+                expectedMatches: 1,
+                expectedMatchText: 'word',
+                expectedMatchStart: 18 // Position accounting for emojis before 'word'
+            }
+        ];
+
+        for (const testCase of testCases) {
+            try {
+                console.log(`  Testing: ${testCase.name}`);
+                const result = this.callMatchAll(testCase.pattern, testCase.text);
+                
+                // Check match count
+                if (result.matchCount !== testCase.expectedMatches) {
+                    console.log(`  ✗ Expected ${testCase.expectedMatches} matches, got ${result.matchCount}`);
+                    return false;
+                }
+                
+                if (result.matchCount > 0) {
+                    const match = result.matches[0];
+                    const actualMatchText = testCase.text.substring(match.start, match.start + match.length);
+                    
+                    // Check match text
+                    if (actualMatchText !== testCase.expectedMatchText) {
+                        console.log(`  ✗ Expected match text "${testCase.expectedMatchText}", got "${actualMatchText}"`);
+                        return false;
+                    }
+                    
+                    // Check match position (this is the critical test for emoji handling)
+                    if (match.start !== testCase.expectedMatchStart) {
+                        console.log(`  ✗ Expected match start ${testCase.expectedMatchStart}, got ${match.start}`);
+                        console.log(`    Text: "${testCase.text}"`);
+                        console.log(`    Pattern: "${testCase.pattern}"`);
+                        console.log(`    Match text at calculated position: "${actualMatchText}"`);
+                        return false;
+                    }
+                    
+                    console.log(`  ✓ Match "${actualMatchText}" found at correct position ${match.start}`);
+                }
+                
+            } catch (error) {
+                console.log(`  ✗ Test case "${testCase.name}" failed: ${error.message}`);
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    testEmojiDisplayAndHighlighting() {
+        // Test that emojis are displayed correctly and highlighting works
+        const testCases = [
+            {
+                name: 'Emoji rendering in match results',
+                pattern: '\\S+',
+                text: 'hello👋',
+                checkRendering: true
+            },
+            {
+                name: 'Multiple emoji sequences',
+                pattern: '\\w+',
+                text: '🎯🚀 target 🎉✨',
+                checkRendering: true
+            },
+            {
+                name: 'Complex emoji with text',
+                pattern: '[a-z]+',
+                text: '👨‍💻 coding 👩‍🎨 art',
+                checkRendering: true
+            }
+        ];
+
+        for (const testCase of testCases) {
+            try {
+                console.log(`  Testing: ${testCase.name}`);
+                const result = this.callMatchAll(testCase.pattern, testCase.text);
+                
+                if (result.matchCount > 0) {
+                    // Test that we can extract text properly for display
+                    const match = result.matches[0];
+                    const matchText = testCase.text.substring(match.start, match.start + match.length);
+                    
+                    // Check that the extracted text is valid and contains expected characters
+                    if (matchText.length === 0) {
+                        console.log(`  ✗ Empty match text extracted`);
+                        return false;
+                    }
+                    
+                    // Check that emojis before and after positions are correctly calculated
+                    const beforeText = testCase.text.substring(0, match.start);
+                    const afterText = testCase.text.substring(match.start + match.length);
+                    
+                    // Verify the text reconstruction is correct
+                    if (beforeText + matchText + afterText !== testCase.text) {
+                        console.log(`  ✗ Text reconstruction failed`);
+                        console.log(`    Original: "${testCase.text}"`);
+                        console.log(`    Reconstructed: "${beforeText + matchText + afterText}"`);
+                        return false;
+                    }
+                    
+                    console.log(`  ✓ Text extraction and positioning correct`);
+                    console.log(`    Match: "${matchText}" at position ${match.start}`);
+                    console.log(`    Before: "${beforeText}", After: "${afterText}"`);
+                }
+                
+            } catch (error) {
+                console.log(`  ✗ Test case "${testCase.name}" failed: ${error.message}`);
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
     async runAllTests() {
         await this.initialize();
         
@@ -197,6 +357,8 @@ class OnigPlaygroundTests {
         this.runTest('Invalid Regex Error Messages', () => this.testInvalidRegexErrorMessage());
         this.runTest('Zero-Length Match Handling', () => this.testZeroLengthMatches());
         this.runTest('Regular Pattern Matching', () => this.testRegularMatches());
+        this.runTest('Emoji Handling in Haystack', () => this.testEmojiHandling());
+        this.runTest('Emoji Display and Highlighting', () => this.testEmojiDisplayAndHighlighting());
         
         console.log('\n=== Test Results ===');
         const passed = this.testResults.filter(r => r.status === 'PASS').length;
