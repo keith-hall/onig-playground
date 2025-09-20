@@ -1,5 +1,6 @@
 #include <oniguruma.h>
 #include <string.h>
+#include <stdio.h>
 
 // Initialize Oniguruma once
 static int onig_inited = 0;
@@ -11,6 +12,17 @@ static void ensure_onig_init() {
     }
 }
 
+// Global error message buffer
+static char error_msg[256] = {0};
+
+/**
+ * get_last_error_message:
+ *   Returns the last error message from regex compilation
+ */  
+const char* get_last_error_message() {
+    return error_msg;
+}
+
 /**
  * match_all:
  *   Find all matches of `pattern` in `text`.
@@ -20,7 +32,8 @@ static void ensure_onig_init() {
  *    match0_group1_start, match0_group1_len, ...,
  *    match1_group0_start, match1_group0_len, ...]
  *
- *   Returns the number of matches found.
+ *   Returns the number of matches found, or -1 on error.
+ *   Use get_last_error_message() to get detailed error information.
  *
  *   NOTE: Caller must allocate buffer big enough to hold:
  *         max_matches * num_groups * 2 integers.
@@ -32,6 +45,9 @@ int match_all(const char* pattern,
               int* num_groups_out) // returns number of capture groups (incl. whole match)
 {
     ensure_onig_init();
+
+    // Clear previous error message
+    error_msg[0] = '\0';
 
     regex_t* reg;
     OnigErrorInfo einfo;
@@ -45,7 +61,12 @@ int match_all(const char* pattern,
                      &einfo);
 
     if (r != ONIG_NORMAL) {
-        onig_free(reg);
+        // Generate detailed error message
+        char err_buf[ONIG_MAX_ERROR_MESSAGE_LEN];
+        onig_error_code_to_str((OnigUChar*)err_buf, r, &einfo);
+        snprintf(error_msg, sizeof(error_msg), "Regex compilation error: %s", err_buf);
+        
+        if (reg) onig_free(reg);
         return -1;
     }
 
@@ -62,7 +83,7 @@ int match_all(const char* pattern,
     int count = 0;
     int buf_pos = 0;
 
-    while (1) {
+    while (start <= end) {
         r = onig_search(reg, str, end, start, end, region, ONIG_OPTION_NONE);
         if (r < 0) break; // no more matches
 
@@ -78,7 +99,14 @@ int match_all(const char* pattern,
         }
 
         count++;
-        start = str + region->end[0]; // continue after full match
+        
+        // Fix for zero-length matches: advance at least one character
+        const OnigUChar* next_start = str + region->end[0];
+        if (next_start == start) {
+            // Zero-length match, advance by one character to avoid infinite loop
+            next_start = start + 1;
+        }
+        start = next_start;
     }
 
     onig_region_free(region, 1);

@@ -96,7 +96,10 @@ class OnigPlayground {
             console.log('WASM returned count:', matchCount);
 
             if (matchCount < 0) {
-                throw new Error('Invalid regex pattern or compilation failed');
+                // Get detailed error message from C wrapper
+                const errorMsgPtr = this.module.ccall("get_last_error_message", "string", [], []);
+                const errorMessage = errorMsgPtr || 'Invalid regex pattern or compilation failed';
+                throw new Error(errorMessage);
             }
 
             const numGroups = this.module.getValue(numGroupsPtr, "i32");
