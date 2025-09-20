@@ -79,7 +79,7 @@ class OnigPlaygroundTests {
             {
                 pattern: '^|$',       // start or end of string
                 text: 'test\nline',
-                expectedMatches: 2    // Start and end of string (single line mode)
+                expectedMatches: 4    // In multiline mode: start of string, end of first line, start of second line, end of string
             }
         ];
 
@@ -91,12 +91,9 @@ class OnigPlaygroundTests {
                 // Debug: show actual match positions
                 if (result.matchCount > 0) {
                     console.log(`  Match positions:`);
-                    for (let m = 0; m < result.matchCount; m++) {
-                        // Each match has num_groups * 2 values (start,length pairs for each group)
-                        // For zero-length matches we only care about the first group (whole match)
-                        const start = this.module.getValue(result.buffer + (m * result.numGroups * 2) * 4, "i32");
-                        const length = this.module.getValue(result.buffer + (m * result.numGroups * 2 + 1) * 4, "i32");
-                        console.log(`    Match ${m + 1}: position ${start}, length ${length}`);
+                    for (let m = 0; m < result.matches.length; m++) {
+                        const match = result.matches[m];
+                        console.log(`    Match ${m + 1}: position ${match.start}, length ${match.length}`);
                     }
                 }
                 
@@ -171,11 +168,19 @@ class OnigPlaygroundTests {
             }
 
             const numGroups = this.module.getValue(numGroupsPtr, "i32");
+            
+            // Extract the match data immediately before freeing
+            const matches = [];
+            for (let m = 0; m < matchCount; m++) {
+                const start = this.module.getValue(buffer + (m * numGroups * 2) * 4, "i32");
+                const length = this.module.getValue(buffer + (m * numGroups * 2 + 1) * 4, "i32");
+                matches.push({ start, length });
+            }
 
             return {
                 matchCount: matchCount,
                 numGroups: numGroups,
-                buffer: buffer
+                matches: matches
             };
 
         } finally {
