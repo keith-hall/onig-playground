@@ -91,6 +91,10 @@ int match_all(const char* pattern,
         r = onig_search(reg, str, end, start, end, region, ONIG_OPTION_NONE);
         if (r < 0) break; // no more matches
 
+        // Debug: track what we found
+        int match_start = region->beg[0];
+        int match_end = region->end[0];
+        
         for (int g = 0; g < num_groups; g++) {
             int beg = region->beg[g];
             int len = (region->end[g] >= 0 ? region->end[g] - region->beg[g] : -1);
@@ -100,13 +104,15 @@ int match_all(const char* pattern,
 
         count++;
         
-        // Fix for zero-length matches: advance at least one character
-        const OnigUChar* next_start = str + region->end[0];
-        if (next_start <= start) {
-            // Zero-length match, advance by one character to avoid infinite loop
-            next_start = start + 1;
+        // Calculate next search position after this match
+        const OnigUChar* match_end_ptr = str + match_end;
+        if (match_end > match_start) {
+            // Normal match (non-zero length): continue from end of match
+            start = match_end_ptr;
+        } else {
+            // Zero-length match: advance by one character to avoid infinite loop
+            start = match_end_ptr + 1;
         }
-        start = next_start;
     }
 
     onig_region_free(region, 1);
