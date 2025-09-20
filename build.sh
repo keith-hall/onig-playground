@@ -17,12 +17,15 @@ docker run \
   -s MODULARIZE=1 \
   -s ALLOW_MEMORY_GROWTH=1 \
   -s ENVIRONMENT=web \
-  -s EXPORTED_FUNCTIONS='["_match_all","_malloc","_free"]' \
+  -s EXPORTED_FUNCTIONS='["_match_all","_get_last_error_message","_malloc","_free"]' \
   -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","getValue","UTF8ToString","stringToUTF8"]' \
   -o $(pwd)/dist/onig.js
 
 cp ./src/index.html ./dist/
 cp ./src/style.css ./dist/
+cp ./src/playground.js ./dist/
+cp ./src/test.html ./dist/
+cp ./src/test.js ./dist/
 
 cd ./dist/
 python3 -m http.server
