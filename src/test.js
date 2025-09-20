@@ -88,6 +88,18 @@ class OnigPlaygroundTests {
                 const result = this.callMatchAll(testCase.pattern, testCase.text);
                 console.log(`  Pattern "${testCase.pattern}" on "${testCase.text}": found ${result.matchCount} matches`);
                 
+                // Debug: show actual match positions
+                if (result.matchCount > 0) {
+                    console.log(`  Match positions:`);
+                    for (let m = 0; m < result.matchCount; m++) {
+                        // Each match has num_groups * 2 values (start,length pairs for each group)
+                        // For zero-length matches we only care about the first group (whole match)
+                        const start = this.module.getValue(result.buffer + (m * result.numGroups * 2) * 4, "i32");
+                        const length = this.module.getValue(result.buffer + (m * result.numGroups * 2 + 1) * 4, "i32");
+                        console.log(`    Match ${m + 1}: position ${start}, length ${length}`);
+                    }
+                }
+                
                 // Check that we got the right number of matches
                 if (result.matchCount == testCase.expectedMatches) {
                     console.log(`  ✓ Pattern handled correctly with ${result.matchCount} matches`);
