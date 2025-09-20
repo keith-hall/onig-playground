@@ -7,9 +7,12 @@ EMSCRIPTEN_VERSION=4.0.14
 
 mkdir -p dist
 
+# https://github.com/nodejs/node/issues/43064
+# https://github.com/nodejs/node/issues/53919
 docker run \
   --rm \
   -v $(pwd):$(pwd):rw \
+  --security-opt seccomp=unconfined \
   emscripten/emsdk:$EMSCRIPTEN_VERSION \
   emcc $(pwd)/src/wrapper/wrapper.c $(pwd)/oniguruma/src/.libs/libonig.a -I$(pwd)/oniguruma/src/ \
   -O3 \
