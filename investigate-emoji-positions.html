@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Position Investigation</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Emoji Position Investigation</h1>
+    <div id="results"></div>
+
+    <script>
+        function investigateString(str, description) {
+            const results = document.getElementById('results');
+            
+            let html = `<div class="result">
+                <h3>${description}</h3>
+                <p><strong>String:</strong> "${str}"</p>
+                <p><strong>Length:</strong> ${str.length}</p>
+                <p><strong>Character breakdown:</strong></p>
+                <ul>`;
+            
+            for (let i = 0; i < str.length; i++) {
+                const char = str[i];
+                const codePoint = str.codePointAt(i);
+                const isHighSurrogate = (codePoint >= 0xD800 && codePoint <= 0xDBFF);
+                const isLowSurrogate = (codePoint >= 0xDC00 && codePoint <= 0xDFFF);
+                
+                html += `<li>Position ${i}: "${char}" (U+${codePoint.toString(16).toUpperCase().padStart(4, '0')})`;
+                if (isHighSurrogate) html += ' [High Surrogate]';
+                if (isLowSurrogate) html += ' [Low Surrogate]';
+                html += '</li>';
+            }
+            
+            html += '</ul>';
+            
+            // Test regex matching
+            const regex = /\w+/g;
+            const matches = [];
+            let match;
+            while ((match = regex.exec(str)) !== null) {
+                matches.push({
+                    text: match[0],
+                    index: match.index
+                });
+            }
+            
+            html += '<p><strong>Regex matches (\\w+):</strong></p><ul>';
+            matches.forEach((match, i) => {
+                html += `<li>Match ${i + 1}: "${match.text}" at position ${match.index}</li>`;
+            });
+            html += '</ul></div>';
+            
+            results.innerHTML += html;
+        }
+        
+        // Test various emoji strings
+        investigateString('👋 hello', 'Simple emoji before text');
+        investigateString('🚀🎉🎯 123', 'Multiple emojis before numbers');
+        investigateString('👨‍💻👩‍🎨 test end', 'Complex emoji sequences');
+        investigateString('🌟start🎯middle🚀word🎉end✨', 'Emojis throughout text');
+        investigateString('hello👋world', 'Emoji within text');
+    </script>
+</body>
+</html>
