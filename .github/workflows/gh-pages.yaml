@@ -1,0 +1,40 @@
+name: Deploy Playground to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'src/**' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Build WASM
+        run: |
+          ./prepare.sh
+          ./build.sh
+          touch dist/.nojekyll
+          rm .gitignore
+          ls -al dist/*
+
+      - name: Deploy to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4.7.3
+        with:
+          branch: gh-pages
+          folder: dist
+          clean: true
