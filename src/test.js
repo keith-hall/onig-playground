@@ -151,6 +151,51 @@ class OnigPlaygroundTests {
         return true;
     }
 
+    /**
+     * Convert UTF-8 byte position to JavaScript string position
+     * @param {string} text - The text string
+     * @param {number} bytePos - UTF-8 byte position
+     * @returns {number} JavaScript string position (UTF-16 code unit position)
+     */
+    utf8ByteToStringPos(text, bytePos) {
+        if (bytePos === 0) return 0;
+        if (bytePos < 0) return -1;
+        
+        // Create a TextEncoder to get UTF-8 bytes
+        const encoder = new TextEncoder();
+        let stringPos = 0;
+        let currentBytePos = 0;
+        
+        // Iterate through string characters and track byte positions
+        for (const char of text) {
+            const charBytes = encoder.encode(char);
+            if (currentBytePos + charBytes.length > bytePos) {
+                // We've found the position
+                return stringPos;
+            }
+            currentBytePos += charBytes.length;
+            stringPos += char.length; // Account for surrogate pairs in JavaScript
+        }
+        
+        return stringPos;
+    }
+
+    /**
+     * Convert UTF-8 byte length to JavaScript string length
+     * @param {string} text - The text string
+     * @param {number} byteStart - UTF-8 byte start position
+     * @param {number} byteLength - UTF-8 byte length
+     * @returns {number} JavaScript string length
+     */
+    utf8ByteLengthToStringLength(text, byteStart, byteLength) {
+        if (byteLength <= 0) return 0;
+        
+        const stringStart = this.utf8ByteToStringPos(text, byteStart);
+        const stringEnd = this.utf8ByteToStringPos(text, byteStart + byteLength);
+        
+        return stringEnd - stringStart;
+    }
+
     callMatchAll(pattern, text) {
         const bufferSize = 200;
         let numGroupsPtr = this.module._malloc(4);
@@ -172,9 +217,19 @@ class OnigPlaygroundTests {
             // Extract the match data immediately before freeing
             const matches = [];
             for (let m = 0; m < matchCount; m++) {
-                const start = this.module.getValue(buffer + (m * numGroups * 2) * 4, "i32");
-                const length = this.module.getValue(buffer + (m * numGroups * 2 + 1) * 4, "i32");
-                matches.push({ start, length });
+                const byteStart = this.module.getValue(buffer + (m * numGroups * 2) * 4, "i32");
+                const byteLength = this.module.getValue(buffer + (m * numGroups * 2 + 1) * 4, "i32");
+                
+                // Convert UTF-8 byte positions to JavaScript string positions
+                const stringStart = this.utf8ByteToStringPos(text, byteStart);
+                const stringLength = this.utf8ByteLengthToStringLength(text, byteStart, byteLength);
+                
+                matches.push({ 
+                    start: stringStart, 
+                    length: stringLength,
+                    end: stringStart + stringLength,
+                    text: text.substring(stringStart, stringStart + stringLength)
+                });
             }
 
             return {
@@ -189,6 +244,76 @@ class OnigPlaygroundTests {
         }
     }
 
+    testUnicodeMatching() {
+        // Test Unicode character handling with different character types
+        const testCases = [
+            {
+                pattern: '(?i)(\\w+)\\s+\\k<1>',
+                text: 'Δ δ 😀',  // Greek uppercase delta, lowercase delta, space, emoji
+                expectedMatches: 1,
+                description: 'Greek letters with case-insensitive backreference'
+            },
+            {
+                pattern: '(\\w+)',
+                text: 'café résumé naïve',  // Latin with diacritics
+                expectedMatches: 3,
+                description: 'Latin characters with diacritics'
+            },
+            {
+                pattern: '(.)\\s+(.)\\s+(.*)',
+                text: 'α β 😀🎉🌟',  // Greek alpha, beta, emojis
+                expectedMatches: 1,
+                description: 'Mixed Unicode: Greek letters and multi-byte emojis'
+            },
+            {
+                pattern: '\\w+',
+                text: 'Hello世界 тест',  // English, Chinese, Cyrillic
+                expectedMatches: 2,  // "Hello" and "тест" - Chinese characters don't match \w in Oniguruma
+                description: 'Multiple scripts: Latin, Chinese, Cyrillic'
+            }
+        ];
+
+        for (const testCase of testCases) {
+            try {
+                console.log(`  Testing: ${testCase.description}`);
+                console.log(`  Pattern: "${testCase.pattern}" on text: "${testCase.text}"`);
+                
+                const result = this.callMatchAll(testCase.pattern, testCase.text);
+                console.log(`  Found ${result.matchCount} matches`);
+                
+                // Verify match count
+                if (result.matchCount !== testCase.expectedMatches) {
+                    console.log(`  ✗ Expected ${testCase.expectedMatches} matches, got ${result.matchCount}`);
+                    return false;
+                }
+                
+                // Verify that extracted text matches what we expect from JavaScript
+                if (result.matches.length > 0) {
+                    const firstMatch = result.matches[0];
+                    const extractedText = testCase.text.substring(firstMatch.start, firstMatch.end);
+                    
+                    if (firstMatch.text !== extractedText) {
+                        console.log(`  ✗ Text extraction mismatch:`);
+                        console.log(`    Expected: "${extractedText}"`);
+                        console.log(`    Got: "${firstMatch.text}"`);
+                        return false;
+                    }
+                    
+                    console.log(`  ✓ Text extraction correct: "${firstMatch.text}"`);
+                    console.log(`  ✓ Position: ${firstMatch.start}-${firstMatch.end} (length: ${firstMatch.length})`);
+                }
+                
+                console.log(`  ✓ Test passed`);
+                
+            } catch (error) {
+                console.log(`  ✗ Test "${testCase.description}" failed: ${error.message}`);
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
     async runAllTests() {
         await this.initialize();
         
@@ -197,6 +322,7 @@ class OnigPlaygroundTests {
         this.runTest('Invalid Regex Error Messages', () => this.testInvalidRegexErrorMessage());
         this.runTest('Zero-Length Match Handling', () => this.testZeroLengthMatches());
         this.runTest('Regular Pattern Matching', () => this.testRegularMatches());
+        this.runTest('Unicode Character Handling', () => this.testUnicodeMatching());
         
         console.log('\n=== Test Results ===');
         const passed = this.testResults.filter(r => r.status === 'PASS').length;

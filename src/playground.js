@@ -77,6 +77,51 @@ class OnigPlayground {
         }
     }
 
+    /**
+     * Convert UTF-8 byte position to JavaScript string position
+     * @param {string} text - The text string
+     * @param {number} bytePos - UTF-8 byte position
+     * @returns {number} JavaScript string position (UTF-16 code unit position)
+     */
+    utf8ByteToStringPos(text, bytePos) {
+        if (bytePos === 0) return 0;
+        if (bytePos < 0) return -1;
+        
+        // Create a TextEncoder to get UTF-8 bytes
+        const encoder = new TextEncoder();
+        let stringPos = 0;
+        let currentBytePos = 0;
+        
+        // Iterate through string characters and track byte positions
+        for (const char of text) {
+            const charBytes = encoder.encode(char);
+            if (currentBytePos + charBytes.length > bytePos) {
+                // We've found the position
+                return stringPos;
+            }
+            currentBytePos += charBytes.length;
+            stringPos += char.length; // Account for surrogate pairs in JavaScript
+        }
+        
+        return stringPos;
+    }
+
+    /**
+     * Convert UTF-8 byte length to JavaScript string length
+     * @param {string} text - The text string
+     * @param {number} byteStart - UTF-8 byte start position
+     * @param {number} byteLength - UTF-8 byte length
+     * @returns {number} JavaScript string length
+     */
+    utf8ByteLengthToStringLength(text, byteStart, byteLength) {
+        if (byteLength <= 0) return 0;
+        
+        const stringStart = this.utf8ByteToStringPos(text, byteStart);
+        const stringEnd = this.utf8ByteToStringPos(text, byteStart + byteLength);
+        
+        return stringEnd - stringStart;
+    }
+
     findAllMatches(pattern, text) {
         const bufferSize = parseInt(this.bufferSizeInput.value) || 200;
         const maxMatches = Math.floor(bufferSize / 20); // Conservative estimate
@@ -110,15 +155,19 @@ class OnigPlayground {
             for (let m = 0; m < matchCount; m++) {
                 const match = [];
                 for (let g = 0; g < numGroups; g++) {
-                    const start = this.module.getValue(buffer + (m * numGroups * 2 + g * 2) * 4, "i32");
-                    const length = this.module.getValue(buffer + (m * numGroups * 2 + g * 2 + 1) * 4, "i32");
+                    const byteStart = this.module.getValue(buffer + (m * numGroups * 2 + g * 2) * 4, "i32");
+                    const byteLength = this.module.getValue(buffer + (m * numGroups * 2 + g * 2 + 1) * 4, "i32");
                     
-                    if (start >= 0 && length >= 0) {
+                    if (byteStart >= 0 && byteLength >= 0) {
+                        // Convert UTF-8 byte positions to JavaScript string positions
+                        const stringStart = this.utf8ByteToStringPos(text, byteStart);
+                        const stringLength = this.utf8ByteLengthToStringLength(text, byteStart, byteLength);
+                        
                         match.push({
-                            start: start,
-                            end: start + length,
-                            length: length,
-                            text: text.substring(start, start + length)
+                            start: stringStart,
+                            end: stringStart + stringLength,
+                            length: stringLength,
+                            text: text.substring(stringStart, stringStart + stringLength)
                         });
                     }
                 }
