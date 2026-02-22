@@ -352,6 +352,40 @@ class OnigPlaygroundTests {
         }
         console.log('  ✓ ONIG_OPTION_CAPTURE_GROUP: () captures as expected');
 
+        // Test with a mixed pattern: one named capture group and one plain group.
+        // Named capture groups (?<name>...) always capture regardless of the option.
+        // Plain () groups are suppressed by ONIG_OPTION_DONT_CAPTURE_GROUP.
+        const mixedPattern = '(?<first>\\w+)\\s+(\\w+)';
+        const mixedText    = 'hello world';
+
+        // ONIG_OPTION_NONE: full match + named group + plain group = 3 groups
+        const mixedDefault = this.callMatchAll(mixedPattern, mixedText, ONIG_OPTION_NONE);
+        console.log(`  Mixed pattern, ONIG_OPTION_NONE: numGroups=${mixedDefault.numGroups}`);
+        if (mixedDefault.numGroups !== 3) {
+            console.log(`  ✗ Expected 3 groups with ONIG_OPTION_NONE, got ${mixedDefault.numGroups}`);
+            return false;
+        }
+        console.log('  ✓ ONIG_OPTION_NONE: named group + plain group both captured');
+
+        // ONIG_OPTION_DONT_CAPTURE_GROUP: full match + named group only = 2 groups
+        // (plain () is suppressed, but (?<name>...) still captures)
+        const mixedDontCapture = this.callMatchAll(mixedPattern, mixedText, ONIG_OPTION_DONT_CAPTURE_GROUP);
+        console.log(`  Mixed pattern, ONIG_OPTION_DONT_CAPTURE_GROUP: numGroups=${mixedDontCapture.numGroups}`);
+        if (mixedDontCapture.numGroups !== 2) {
+            console.log(`  ✗ Expected 2 groups with ONIG_OPTION_DONT_CAPTURE_GROUP, got ${mixedDontCapture.numGroups}`);
+            return false;
+        }
+        console.log('  ✓ ONIG_OPTION_DONT_CAPTURE_GROUP: named group still captured, plain group suppressed');
+
+        // ONIG_OPTION_CAPTURE_GROUP: full match + named group + plain group = 3 groups
+        const mixedCapture = this.callMatchAll(mixedPattern, mixedText, ONIG_OPTION_CAPTURE_GROUP);
+        console.log(`  Mixed pattern, ONIG_OPTION_CAPTURE_GROUP: numGroups=${mixedCapture.numGroups}`);
+        if (mixedCapture.numGroups !== 3) {
+            console.log(`  ✗ Expected 3 groups with ONIG_OPTION_CAPTURE_GROUP, got ${mixedCapture.numGroups}`);
+            return false;
+        }
+        console.log('  ✓ ONIG_OPTION_CAPTURE_GROUP: named group + plain group both captured');
+
         return true;
     }
 
