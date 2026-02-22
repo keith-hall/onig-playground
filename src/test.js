@@ -196,15 +196,15 @@ class OnigPlaygroundTests {
         return stringEnd - stringStart;
     }
 
-    callMatchAll(pattern, text) {
+    callMatchAll(pattern, text, options = 0) {
         const bufferSize = 200;
         let numGroupsPtr = this.module._malloc(4);
         let buffer = this.module._malloc(bufferSize * 4);
 
         try {
             const matchCount = this.module.ccall("match_all", "number",
-                ["string", "string", "number", "number", "number"],
-                [pattern, text, buffer, bufferSize, numGroupsPtr]);
+                ["string", "string", "number", "number", "number", "number"],
+                [pattern, text, buffer, bufferSize, numGroupsPtr, options]);
 
             if (matchCount < 0) {
                 const errorMsgPtr = this.module.ccall("get_last_error_message", "string", [], []);
@@ -314,6 +314,47 @@ class OnigPlaygroundTests {
         return true;
     }
 
+    testCaptureGroupOptions() {
+        // ONIG_OPTION_NONE = 0: parentheses create capture groups (default behavior)
+        // ONIG_OPTION_DONT_CAPTURE_GROUP = 1<<27: plain () do not capture
+        // ONIG_OPTION_CAPTURE_GROUP     = 1<<28: plain () always capture (even in syntaxes where they wouldn't)
+        const ONIG_OPTION_NONE              = 0;
+        const ONIG_OPTION_DONT_CAPTURE_GROUP = 1 << 27; // 134217728
+        const ONIG_OPTION_CAPTURE_GROUP      = 1 << 28; // 268435456
+
+        const pattern = '(\\w+)';
+        const text    = 'hello';
+
+        // With ONIG_OPTION_NONE: one full-match group + one capture group = 2 groups
+        const defaultResult = this.callMatchAll(pattern, text, ONIG_OPTION_NONE);
+        console.log(`  ONIG_OPTION_NONE: numGroups=${defaultResult.numGroups}`);
+        if (defaultResult.numGroups !== 2) {
+            console.log(`  ✗ Expected 2 groups with ONIG_OPTION_NONE, got ${defaultResult.numGroups}`);
+            return false;
+        }
+        console.log('  ✓ ONIG_OPTION_NONE: () creates a capture group');
+
+        // With ONIG_OPTION_DONT_CAPTURE_GROUP: plain () does not capture, so only the full-match group remains
+        const dontCaptureResult = this.callMatchAll(pattern, text, ONIG_OPTION_DONT_CAPTURE_GROUP);
+        console.log(`  ONIG_OPTION_DONT_CAPTURE_GROUP: numGroups=${dontCaptureResult.numGroups}`);
+        if (dontCaptureResult.numGroups !== 1) {
+            console.log(`  ✗ Expected 1 group with ONIG_OPTION_DONT_CAPTURE_GROUP, got ${dontCaptureResult.numGroups}`);
+            return false;
+        }
+        console.log('  ✓ ONIG_OPTION_DONT_CAPTURE_GROUP: () does not capture');
+
+        // With ONIG_OPTION_CAPTURE_GROUP: () explicitly captures; result same as default for standard syntax
+        const captureResult = this.callMatchAll(pattern, text, ONIG_OPTION_CAPTURE_GROUP);
+        console.log(`  ONIG_OPTION_CAPTURE_GROUP: numGroups=${captureResult.numGroups}`);
+        if (captureResult.numGroups !== 2) {
+            console.log(`  ✗ Expected 2 groups with ONIG_OPTION_CAPTURE_GROUP, got ${captureResult.numGroups}`);
+            return false;
+        }
+        console.log('  ✓ ONIG_OPTION_CAPTURE_GROUP: () captures as expected');
+
+        return true;
+    }
+
     async runAllTests() {
         await this.initialize();
         
@@ -323,6 +364,7 @@ class OnigPlaygroundTests {
         this.runTest('Zero-Length Match Handling', () => this.testZeroLengthMatches());
         this.runTest('Regular Pattern Matching', () => this.testRegularMatches());
         this.runTest('Unicode Character Handling', () => this.testUnicodeMatching());
+        this.runTest('Capture Group Options', () => this.testCaptureGroupOptions());
         
         console.log('\n=== Test Results ===');
         const passed = this.testResults.filter(r => r.status === 'PASS').length;

@@ -41,8 +41,9 @@ const char* get_last_error_message() {
 int match_all(const char* pattern,
               const char* text,
               int* buffer,
-              int buffer_size,     // capacity in ints
-              int* num_groups_out) // returns number of capture groups (incl. whole match)
+              int buffer_size,      // capacity in ints
+              int* num_groups_out,  // returns number of capture groups (incl. whole match)
+              int options)          // OnigOptionType flags (e.g. ONIG_OPTION_NONE)
 {
     ensure_onig_init();
 
@@ -55,7 +56,7 @@ int match_all(const char* pattern,
     int r = onig_new(&reg,
                      (const OnigUChar*)pattern,
                      (const OnigUChar*)(pattern + strlen(pattern)),
-                     ONIG_OPTION_NONE,
+                     (OnigOptionType)options,
                      ONIG_ENCODING_UTF8,
                      ONIG_SYNTAX_DEFAULT,
                      &einfo);
