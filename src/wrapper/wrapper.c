@@ -71,13 +71,12 @@ int match_all(const char* pattern,
         return -1;
     }
 
-    // Use onig_number_of_captures as an initial estimate; it does not count named
-    // capture groups, so we update num_groups from region->num_regs after the first
-    // successful match.
-    int num_groups = onig_number_of_captures(reg) + 1; // +1 for full match
-    if (num_groups_out) {
-        *num_groups_out = num_groups;
-    }
+    // num_groups is derived from region->num_regs after each successful search.
+    // region->num_regs equals reg->num_mem+1 (set at regex compile time), so it
+    // is constant across all matches for the same compiled regex regardless of
+    // which groups actually participate in a given match.
+    // When there are no matches, num_groups_out reports 1 (full match only).
+    int num_groups = 1; // minimum: full match only; updated from region->num_regs on match
 
     OnigRegion* region = onig_region_new();
     const OnigUChar* str = (const OnigUChar*)text;
@@ -91,20 +90,12 @@ int match_all(const char* pattern,
         r = onig_search(reg, str, end, start, end, region, ONIG_OPTION_NONE);
         if (r < 0) break; // no more matches
 
-        // After the first match, update num_groups from region->num_regs so that
-        // named capture groups (not counted by onig_number_of_captures) are included.
-        if (count == 0) {
-            num_groups = region->num_regs;
-            if (num_groups_out) {
-                *num_groups_out = num_groups;
-            }
-        }
+        num_groups = region->num_regs;
 
         if (buf_pos + num_groups*2 > buffer_size) {
             break; // no more room
         }
 
-        // Debug: track what we found
         int match_start = region->beg[0];
         int match_end = region->end[0];
         
@@ -126,6 +117,10 @@ int match_all(const char* pattern,
             // Zero-length match: advance by one character to avoid infinite loop
             start = match_end_ptr + 1;
         }
+    }
+
+    if (num_groups_out) {
+        *num_groups_out = num_groups;
     }
 
     onig_region_free(region, 1);
