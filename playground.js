@@ -13,6 +13,7 @@ class OnigPlayground {
         this.regexInput = document.getElementById('regex-input');
         this.textInput = document.getElementById('text-input');
         this.bufferSizeInput = document.getElementById('buffer-size');
+        this.captureGroupOptions = document.querySelectorAll('input[name="capture-group-option"]');
         this.errorSection = document.getElementById('error-section');
         this.errorOutput = document.getElementById('error-output');
         this.matchesOutput = document.getElementById('matches-output');
@@ -25,6 +26,9 @@ class OnigPlayground {
         this.regexInput.addEventListener('input', () => this.debounceProcessRegex());
         this.textInput.addEventListener('input', () => this.debounceProcessRegex());
         this.bufferSizeInput.addEventListener('change', () => this.debounceProcessRegex());
+        this.captureGroupOptions.forEach(radio => {
+            radio.addEventListener('change', () => this.debounceProcessRegex());
+        });
     }
 
     async initializeOniguruma() {
@@ -125,8 +129,10 @@ class OnigPlayground {
     findAllMatches(pattern, text) {
         const bufferSize = parseInt(this.bufferSizeInput.value) || 200;
         const maxMatches = Math.floor(bufferSize / 20); // Conservative estimate
+        const selectedOption = document.querySelector('input[name="capture-group-option"]:checked');
+        const options = selectedOption ? parseInt(selectedOption.value) : 0;
         
-        console.log('findAllMatches called with:', {pattern, textLength: text.length, maxBufferSize: bufferSize});
+        console.log('findAllMatches called with:', {pattern, textLength: text.length, maxBufferSize: bufferSize, options});
 
         let numGroupsPtr = this.module._malloc(4);
         let buffer = this.module._malloc(bufferSize * 4);
@@ -135,8 +141,8 @@ class OnigPlayground {
             console.log('Calling WASM match_all function...');
             
             const matchCount = this.module.ccall("match_all", "number",
-                ["string", "string", "number", "number", "number"],
-                [pattern, text, buffer, bufferSize, numGroupsPtr]);
+                ["string", "string", "number", "number", "number", "number"],
+                [pattern, text, buffer, bufferSize, numGroupsPtr, options]);
 
             console.log('WASM returned count:', matchCount);
 
