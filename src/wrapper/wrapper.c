@@ -71,6 +71,9 @@ int match_all(const char* pattern,
         return -1;
     }
 
+    // Use onig_number_of_captures as an initial estimate; it does not count named
+    // capture groups, so we update num_groups from region->num_regs after the first
+    // successful match.
     int num_groups = onig_number_of_captures(reg) + 1; // +1 for full match
     if (num_groups_out) {
         *num_groups_out = num_groups;
@@ -85,12 +88,21 @@ int match_all(const char* pattern,
     int buf_pos = 0;
 
     while (start < end) {
+        r = onig_search(reg, str, end, start, end, region, ONIG_OPTION_NONE);
+        if (r < 0) break; // no more matches
+
+        // After the first match, update num_groups from region->num_regs so that
+        // named capture groups (not counted by onig_number_of_captures) are included.
+        if (count == 0) {
+            num_groups = region->num_regs;
+            if (num_groups_out) {
+                *num_groups_out = num_groups;
+            }
+        }
+
         if (buf_pos + num_groups*2 > buffer_size) {
             break; // no more room
         }
-
-        r = onig_search(reg, str, end, start, end, region, ONIG_OPTION_NONE);
-        if (r < 0) break; // no more matches
 
         // Debug: track what we found
         int match_start = region->beg[0];
