@@ -316,11 +316,11 @@ class OnigPlaygroundTests {
 
     testCaptureGroupOptions() {
         // ONIG_OPTION_NONE = 0: parentheses create capture groups (default behavior)
-        // ONIG_OPTION_DONT_CAPTURE_GROUP = 1<<27: plain () do not capture
-        // ONIG_OPTION_CAPTURE_GROUP     = 1<<28: plain () always capture (even in syntaxes where they wouldn't)
+        // ONIG_OPTION_DONT_CAPTURE_GROUP = 1<<7: plain () do not capture
+        // ONIG_OPTION_CAPTURE_GROUP     = 1<<8: plain () always capture (even in syntaxes where they wouldn't)
         const ONIG_OPTION_NONE              = 0;
-        const ONIG_OPTION_DONT_CAPTURE_GROUP = 1 << 27; // 134217728
-        const ONIG_OPTION_CAPTURE_GROUP      = 1 << 28; // 268435456
+        const ONIG_OPTION_DONT_CAPTURE_GROUP = 1 << 7; // 128
+        const ONIG_OPTION_CAPTURE_GROUP      = 1 << 8; // 256
 
         const pattern = '(\\w+)';
         const text    = 'hello';
