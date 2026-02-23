@@ -27,6 +27,18 @@
                         <input type="number" id="buffer-size" value="200" min="10" max="10000" style="width: 80px; padding: 0.25rem; border: 1px solid #e9ecef; border-radius: 3px;">
                         <small style="color: #6c757d;">Increase if you expect many matches or capture groups</small>
                     </div>
+
+                    <div class="flags-section">
+                        <label>Capture Group Option</label>
+                        <div class="flags" role="radiogroup" aria-label="Capture group option">
+                            <!-- 0 = ONIG_OPTION_NONE -->
+                            <label><input type="radio" name="capture-group-option" value="0" checked> Default (<code>ONIG_OPTION_NONE</code>)</label>
+                            <!-- 134217728 = 1<<27 = ONIG_OPTION_DONT_CAPTURE_GROUP -->
+                            <label><input type="radio" name="capture-group-option" value="134217728"> Don't capture groups (<code>ONIG_OPTION_DONT_CAPTURE_GROUP</code>)</label>
+                            <!-- 268435456 = 1<<28 = ONIG_OPTION_CAPTURE_GROUP -->
+                            <label><input type="radio" name="capture-group-option" value="268435456"> Capture groups (<code>ONIG_OPTION_CAPTURE_GROUP</code>)</label>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="text-section">
