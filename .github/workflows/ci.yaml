@@ -1,0 +1,28 @@
+name: Run Tests
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Build WASM
+        run: |
+          ./prepare.sh
+          ./build.sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Run tests
+        run: node dist/run-tests.js
