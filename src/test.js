@@ -389,6 +389,38 @@ class OnigPlaygroundTests {
         return true;
     }
 
+    testFindNotEmptyOption() {
+        const ONIG_OPTION_NONE = 0;
+        const ONIG_OPTION_FIND_NOT_EMPTY = 1 << 5; // 32
+
+        const pattern = '\\w*';
+        const text = '@@@ abc defg hij';
+
+        const defaultResult = this.callMatchAll(pattern, text, ONIG_OPTION_NONE);
+        console.log(`  ONIG_OPTION_NONE: matchCount=${defaultResult.matchCount}`);
+
+        const findNotEmptyResult = this.callMatchAll(pattern, text, ONIG_OPTION_FIND_NOT_EMPTY);
+        console.log(`  ONIG_OPTION_FIND_NOT_EMPTY: matchCount=${findNotEmptyResult.matchCount}`);
+
+        if (findNotEmptyResult.matchCount >= defaultResult.matchCount) {
+            console.log('  ✗ Expected fewer matches with ONIG_OPTION_FIND_NOT_EMPTY');
+            return false;
+        }
+
+        if (!findNotEmptyResult.matches.every(match => match.length > 0)) {
+            console.log('  ✗ ONIG_OPTION_FIND_NOT_EMPTY returned an empty match');
+            return false;
+        }
+
+        if (findNotEmptyResult.matchCount !== 3) {
+            console.log(`  ✗ Expected 3 non-empty matches, got ${findNotEmptyResult.matchCount}`);
+            return false;
+        }
+
+        console.log('  ✓ ONIG_OPTION_FIND_NOT_EMPTY excludes empty matches');
+        return true;
+    }
+
     async runAllTests() {
         await this.initialize();
         
@@ -399,6 +431,7 @@ class OnigPlaygroundTests {
         this.runTest('Regular Pattern Matching', () => this.testRegularMatches());
         this.runTest('Unicode Character Handling', () => this.testUnicodeMatching());
         this.runTest('Capture Group Options', () => this.testCaptureGroupOptions());
+        this.runTest('Find Not Empty Option', () => this.testFindNotEmptyOption());
         
         console.log('\n=== Test Results ===');
         const passed = this.testResults.filter(r => r.status === 'PASS').length;
