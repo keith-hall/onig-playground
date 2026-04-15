@@ -129,11 +129,12 @@ class OnigPlayground {
     }
 
     findAllMatches(pattern, text) {
+        const ONIG_OPTION_FIND_NOT_EMPTY = 1 << 5;
         const bufferSize = parseInt(this.bufferSizeInput.value) || 200;
         const maxMatches = Math.floor(bufferSize / 20); // Conservative estimate
         const selectedOption = document.querySelector('input[name="capture-group-option"]:checked');
         const captureGroupOptions = selectedOption ? parseInt(selectedOption.value) : 0;
-        const findNotEmptyOptions = this.findNotEmptyOption.checked ? 32 : 0;
+        const findNotEmptyOptions = this.findNotEmptyOption.checked ? ONIG_OPTION_FIND_NOT_EMPTY : 0;
         const options = captureGroupOptions | findNotEmptyOptions;
         
         console.log('findAllMatches called with:', {pattern, textLength: text.length, maxBufferSize: bufferSize, options});
