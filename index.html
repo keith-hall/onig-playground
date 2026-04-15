@@ -39,6 +39,13 @@
                             <label><input type="radio" name="capture-group-option" value="268435456"> Capture groups (<code>ONIG_OPTION_CAPTURE_GROUP</code>)</label>
                         </div>
                     </div>
+                    <div class="flags-section">
+                        <label>Search Option</label>
+                        <div class="flags">
+                            <!-- 32 = 1<<5 = ONIG_OPTION_FIND_NOT_EMPTY -->
+                            <label><input type="checkbox" id="find-not-empty-option"> Ignore empty matches (<code>ONIG_OPTION_FIND_NOT_EMPTY</code>)</label>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="text-section">
