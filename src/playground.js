@@ -14,6 +14,7 @@ class OnigPlayground {
         this.textInput = document.getElementById('text-input');
         this.bufferSizeInput = document.getElementById('buffer-size');
         this.captureGroupOptions = document.querySelectorAll('input[name="capture-group-option"]');
+        this.findNotEmptyOption = document.getElementById('find-not-empty-option');
         this.errorSection = document.getElementById('error-section');
         this.errorOutput = document.getElementById('error-output');
         this.matchesOutput = document.getElementById('matches-output');
@@ -29,6 +30,7 @@ class OnigPlayground {
         this.captureGroupOptions.forEach(radio => {
             radio.addEventListener('change', () => this.debounceProcessRegex());
         });
+        this.findNotEmptyOption.addEventListener('change', () => this.debounceProcessRegex());
     }
 
     async initializeOniguruma() {
@@ -130,7 +132,9 @@ class OnigPlayground {
         const bufferSize = parseInt(this.bufferSizeInput.value) || 200;
         const maxMatches = Math.floor(bufferSize / 20); // Conservative estimate
         const selectedOption = document.querySelector('input[name="capture-group-option"]:checked');
-        const options = selectedOption ? parseInt(selectedOption.value) : 0;
+        const captureGroupOptions = selectedOption ? parseInt(selectedOption.value) : 0;
+        const findNotEmptyOptions = this.findNotEmptyOption.checked ? 32 : 0;
+        const options = captureGroupOptions | findNotEmptyOptions;
         
         console.log('findAllMatches called with:', {pattern, textLength: text.length, maxBufferSize: bufferSize, options});
 

@@ -89,7 +89,7 @@ int match_all(const char* pattern,
             break; // no more room
         }
 
-        r = onig_search(reg, str, end, start, end, region, ONIG_OPTION_NONE);
+        r = onig_search(reg, str, end, start, end, region, (OnigOptionType)options);
         if (r < 0) break; // no more matches
 
         // Debug: track what we found
@@ -120,4 +120,3 @@ int match_all(const char* pattern,
     onig_free(reg);
     return count;
 }
-
